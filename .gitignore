@@ -1,0 +1,17 @@
+# PlatformIO temp stuff
+.pio
+
+# Don't need this currently.
+test/
+lib/
+include/
+
+# macOS garbage
+._DS_Store
+.DS_Store
+
+# VSCode garbage
+.vscode/
+
+# Archives
+*.zip

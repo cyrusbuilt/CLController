@@ -1,0 +1,15 @@
+{
+	"sheetName": "JoyToTheWorld",
+	"sequences": [
+		{
+			"states": [
+				{
+					"moduleIndex": 0,
+					"lightStringIndex": 1,
+					"lightStringState": "on"
+				}
+			],
+			"delayMs": 50
+		}
+	]
+}

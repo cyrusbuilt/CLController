@@ -1,0 +1,54 @@
+*Pick And Place List
+*Company=
+*Author=
+*eMail=
+*
+*Project=RelayModule
+*Date=18:50:36
+*CreatedBy=Fritzing 0.9.3b.04.19.5c895d327c44a3114e5fcc9d8260daf0cbb52806
+*
+*
+*Coordinates in mm, always center of component
+*Origin 0/0=Lower left corner of PCB
+*Rotation in degree (0-360, math. pos.)
+*
+*No;Value;Package;X;Y;Rotation;Side;Name
+1;;THT;104.174;-32.9918;0;Bottom;J2
+2;;;83.98;-32.8509;-90;Bottom;TXT34
+3;150;THT;16.7978;-48.1048;180;Bottom;R1
+4;;relay-jzc;30.7678;-47.7438;0;Bottom;U1
+5;;THT;5.49478;-30.3248;0;Bottom;J1
+6;;;62.4813;-37.9484;0;Bottom;Via9
+7;;;96.6848;-46.4223;-90;Bottom;TXT2
+8;;;85.7244;-31.835;-90;Bottom;TXT35
+9;;;87.5011;-32.1808;-90;Bottom;TXT36
+10;;relay-jzc;61.2478;-17.9858;-180;Bottom;U6
+11;;;14.7393;-11.4929;0;Bottom;IMG1
+12;;;105.698;-4.92472;0;Bottom;Hole2
+13;;;105.698;-60.8048;0;Bottom;Hole1
+14;;;6.63778;-22.6987;0;Bottom;Via5
+15;;;21.876;-20.2004;0;Bottom;Via7
+16;;relay-jzc;76.4878;-47.7438;0;Bottom;U4
+17;;;87.2378;-1.75645;0;Bottom;TXT13
+18;;;16.7664;-40.4974;0;Bottom;Via4
+19;;;3.63614;-41.8951;90;Bottom;TXT10
+20;;;27.8069;-1.935;0;Bottom;TXT12
+21;;;62.4813;-30.3293;0;Bottom;Via8
+22;;;96.6787;-9.55347;-90;Bottom;TXT3
+23;;;96.7171;-16.21;-90;Bottom;TXT9
+24;;relay-jzc;46.0078;-47.7438;0;Bottom;U2
+25;;;4.09778;-4.92472;0;Bottom;Hole4
+26;;;4.09778;-60.8048;0;Bottom;Hole3
+27;;;10.0879;-45.0143;0;Bottom;TXT11
+28;;5 mm [THT];4.09778;-46.2558;0;Bottom;LED1
+29;;;96.6691;-36.2709;-90;Bottom;TXT5
+30;;relay-jzc;76.4878;-17.9858;-180;Bottom;U5
+31;;;96.6691;-26.2331;-90;Bottom;TXT6
+32;;relay-jzc;30.7678;-17.9858;-180;Bottom;U8
+33;;;96.5946;-31.1957;-90;Bottom;TXT7
+34;;;96.5828;-41.4035;-90;Bottom;TXT4
+35;;relay-jzc;61.2478;-47.7438;0;Bottom;U3
+36;;;96.6931;-21.172;-90;Bottom;TXT8
+37;;;21.876;-55.6964;0;Bottom;Via6
+38;;relay-jzc;46.0078;-17.9858;180;Bottom;U7
+39;;;96.6574;-51.4082;-90;Bottom;TXT1
