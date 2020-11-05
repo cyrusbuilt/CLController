@@ -92,6 +92,10 @@ void addBus(Adafruit_MCP23017 &bus) {
 }
 
 Adafruit_MCP23017 getBus(std::size_t index) {
+    if (index < 0 || index > additionalBusses.size() - 1) {
+        index = 0;
+    }
+
     return additionalBusses.at(index).get();
 }
 
@@ -100,6 +104,10 @@ void addModule(RelayModule &module) {
 }
 
 RelayModule getModule(std::size_t index) {
+    if (index < 0 || index > relayModules.size() - 1) {
+        index = 0;
+    }
+
     return relayModules.at(index).get();
 }
 
@@ -375,6 +383,10 @@ void doFactoryRestore() {
 }
 
 void playSequenceSheet() {
+    if (terminateSequence) {
+        return;
+    }
+
     Serial.print(F("INFO: Loading sequence file: "));
     Serial.print(PLAYSHEET_FILE_PATH);
     Serial.println(F(" ..."));
@@ -416,10 +428,10 @@ void playSequenceSheet() {
     Serial.println(F("DONE"));
 
     runLED.on();
-    String sheetName = doc["sheetName"].as<String>();
+    String sheetName = doc["name"].as<String>();
     Serial.print(F("INFO: Executing sequence sheet: "));
     Serial.println(sheetName);
-    JsonArray sequences = doc["sequences"].as<JsonArray>();
+    JsonArray sequences = doc["seq"].as<JsonArray>();
     for (auto sequence : sequences) {
         // This will introduce delays during sequences, but it beats blocking
         // other operations from processing and keeps the watchdog fed.
@@ -433,14 +445,14 @@ void playSequenceSheet() {
 
         JsonArray states = sequence["states"];
         for (auto state : states) {
-            RelayModule module = getModule(state["moduleIndex"].as<uint8_t>());
+            RelayModule module = getModule(state["modIdx"].as<uint8_t>());
 
-            String stateStr = state["lightStringState"].as<String>();
+            String stateStr = state["lsState"].as<String>();
             stateStr.trim();
             stateStr.toLowerCase();
 
             ModuleRelayState newState = "on" ? ModuleRelayState::CLOSED : ModuleRelayState::OPEN;
-            RelaySelect relay = (RelaySelect)state["lightStringIndex"].as<uint8_t>();
+            RelaySelect relay = (RelaySelect)state["lsIdx"].as<uint8_t>();
             module.setState(relay, newState);
         }
 
@@ -535,7 +547,6 @@ void handleControlRequest(String id, ControlCommand cmd) {
             break;
         case ControlCommand::PLAY_SEQUENCE:
             terminateSequence = false;
-            playSequenceSheet();
             break;
         case ControlCommand::REBOOT:
             reboot();
@@ -849,6 +860,8 @@ void initComBus() {
         Serial.println(devicesFound.size());
         
         primaryBus.begin(PRIMARY_I2C_ADDRESS);
+        addBus(primaryBus);  // The primary bus controller should always be at index 0.
+
         for (std::size_t i = 0; i < devicesFound.size(); i++) {
             Adafruit_MCP23017 newBus;
             newBus.begin(devicesFound.at(i));

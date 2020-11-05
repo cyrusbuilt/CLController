@@ -24,7 +24,7 @@
     #define OTA_HOST_PORT 8266                      // The OTA updater port.
     #define OTA_PASSWORD "your_ota_password_here"   // The OTA updater password.
 #endif
-IPAddress ip(192, 168, 0, 225);                     // Default static IP address.
+IPAddress ip(192, 168, 0, 215);                     // Default static IP address.
 IPAddress gw(192, 168, 0, 1);                       // Default static gateway address.
 IPAddress sm(255, 255, 255, 0);                     // Default static subnet mask.
 IPAddress dns(192, 168, 0, 1);                      // Default static primary DNS address.

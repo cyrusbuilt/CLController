@@ -1,15 +1,1390 @@
 {
-	"sheetName": "JoyToTheWorld",
-	"sequences": [
+	"name": "JoyToTheWorld",
+	"seq": [
 		{
 			"states": [
 				{
-					"moduleIndex": 0,
-					"lightStringIndex": 1,
-					"lightStringState": "on"
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
 				}
 			],
-			"delayMs": 50
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 450
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 150
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 1050
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 150
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 450
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 150
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState":  "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 450
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 150
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75			
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 900
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 75
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 450
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 150
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 300
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 600
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				}
+			],
+			"delayMs": 1200
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "off"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "off"
+				}
+			],
+			"delayMs": 10000
 		}
 	]
 }
