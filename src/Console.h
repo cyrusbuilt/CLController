@@ -29,6 +29,8 @@ public:
     void onFactoryRestore(void (*factoryRestoreHandler)());
     void onInterruptPlaysheet(void (*interruptPlaysheetHandler)());
     void onRunPlaysheet(void (*runPlaysheetHandler)());
+    void onAllLightsOn(void (*allLightsOnHandler)());
+    void onAllLightsOff(void (*allLightsOffHandler)());
     void checkInterrupt();
 
 private:
@@ -53,6 +55,9 @@ private:
     void (*factoryRestoreHandler)();
     void (*interruptPlaysheetHandler)();
     void (*runPlaysheetHandler)();
+    void (*allLightsOnHandler)();
+    void (*allLightsOffHandler)();
+    
     String _hostname;
     String _mqttBroker;
     int _mqttPort;

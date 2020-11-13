@@ -67,6 +67,14 @@ void ConsoleClass::onRunPlaysheet(void (*runPlaysheetHandler)()) {
     this->runPlaysheetHandler = runPlaysheetHandler;
 }
 
+void ConsoleClass::onAllLightsOn(void (*allLightsOnHandler)()) {
+    this->allLightsOnHandler = allLightsOnHandler;
+}
+
+void ConsoleClass::onAllLightsOff(void (*allLightsOffHandler)()) {
+    this->allLightsOffHandler = allLightsOffHandler;
+}
+
 void ConsoleClass::setMqttConfig(String broker, int port, String username, String password, String conChan, String statChan) {
     this->_mqttBroker = broker;
     this->_mqttPort = port;
@@ -235,6 +243,8 @@ void ConsoleClass::displayMenu() {
     Serial.println(F("=                            ="));
     Serial.println(F("= a: Run playsheet           ="));
     Serial.println(F("= b: Interrupt playsheet     ="));
+    Serial.println(F("= h: All Lights On           ="));
+    Serial.println(F("= i: All Lights Off          ="));
     Serial.println(F("= r: Reboot                  ="));
     Serial.println(F("= c: Configure network       ="));
     Serial.println(F("= m: Configure MQTT settings ="));
@@ -271,6 +281,22 @@ void ConsoleClass::checkCommand() {
                 this->interruptPlaysheetHandler();
             }
 
+            this->enterCommandInterpreter();
+            break;
+        case 'h':
+            if (this->allLightsOnHandler != NULL) {
+                this->allLightsOnHandler();
+            }
+
+            Serial.println();
+            this->enterCommandInterpreter();
+            break;
+        case 'i':
+            if (this->allLightsOffHandler != NULL) {
+                this->allLightsOffHandler();
+            }
+
+            Serial.println();
             this->enterCommandInterpreter();
             break;
         case 'r':

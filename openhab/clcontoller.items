@@ -1,0 +1,9 @@
+String CLControllerSystemID "System ID: [%s]" <keyring> { channel="mqtt:topic:mosquitto:clcontroller:SysID" }
+String CLControllerVersion "Firmware version: [%s]" { channel="mqtt:topic:mosquitto:clcontroller:Version" }
+Number CLControllerState <status> { channel="mqtt:topic:mosquitto:clcontroller:SysState" }
+String CLControllerSystemCommand "Actions" <switch>
+
+Number CLControllerPlayer <mediacontrol> { channel="mqtt:topic:mosquitto:clcontroller:PlayingSheet" [profile="transform:JS", function="playSeqTransform.js"] }
+String CLControllerSheetName "Executing sheet: [%s]" { channel="mqtt:topic:mosquitto:clcontroller:SheetName" }
+Switch CLControllerPlayerControl "Play/Pause Sheet" <slider>
+Switch CLControllerAllSwitch "All Lights" <slider>

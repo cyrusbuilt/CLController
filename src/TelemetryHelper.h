@@ -36,7 +36,9 @@ enum class ControlCommand: uint8_t {
     REBOOT = 2,
     REQUEST_STATUS = 3,
     PAUSE_SEQUENCE = 4,
-    PLAY_SEQUENCE = 5
+    PLAY_SEQUENCE = 5,
+    ALL_ON = 6,
+    ALL_OFF = 7
 };
 
 /**

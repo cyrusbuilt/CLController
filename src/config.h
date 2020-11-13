@@ -24,9 +24,36 @@
     #define OTA_HOST_PORT 8266                      // The OTA updater port.
     #define OTA_PASSWORD "your_ota_password_here"   // The OTA updater password.
 #endif
-IPAddress ip(192, 168, 0, 215);                     // Default static IP address.
-IPAddress gw(192, 168, 0, 1);                       // Default static gateway address.
-IPAddress sm(255, 255, 255, 0);                     // Default static subnet mask.
-IPAddress dns(192, 168, 0, 1);                      // Default static primary DNS address.
+const IPAddress defaultIp(192, 168, 0, 215);                     // Default static IP address.
+const IPAddress defaultGw(192, 168, 0, 1);                       // Default static gateway address.
+const IPAddress defaultSm(255, 255, 255, 0);                     // Default static subnet mask.
+const IPAddress defaultDns(192, 168, 0, 1);                      // Default static primary DNS address.
+
+typedef struct {
+    // Network stuff
+    String hostname;
+    String ssid;
+    String password;
+    IPAddress ip;
+    IPAddress gw;
+    IPAddress sm;
+    IPAddress dns;
+    bool useDhcp;
+
+    uint8_t clockTimezone;
+    String sheetName;
+
+    // MQTT stuff
+    String mqttTopicStatus;
+    String mqttTopicControl;
+    String mqttBroker;
+    String mqttUsername;
+    String mqttPassword;
+    uint16_t mqttPort;
+
+    // OTA stuff
+    uint16_t otaPort;
+    String otaPassword;
+} config_t;
 
 #endif

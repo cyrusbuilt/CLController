@@ -1,0 +1,9 @@
+Thing mqtt:topic:mosquitto:clcontroller "MQTT Thing CLController" (mqtt:broker:mosquitto) @ "CLController" {
+    Channels:
+        Type switch : Activator [commandTopic="clcontroller/control"]
+        Type string : SheetName [stateTopic="contoller/status", transformationPattern="JSONPATH:$.sheetName"]
+        Type string : Version [stateTopic="clcontroller/status", transformationPattern="JSONPATH:$.firmwareVersion"]
+        Type number : SysState [stateTopic="clcontroller/status", transformationPattern="JSONPATH:$.systemState"]
+        Type string : SysID [stateTopic="clcontroller/status", transformationPattern="JSONPATH:$.client_id"]
+		Type switch : PlayingSheet [stateTopic="clcontroller/status"]
+}

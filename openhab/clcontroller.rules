@@ -1,0 +1,60 @@
+// NOTE: Commands taken from TelemetryHelper.h
+var String fileName = "clcontroller.rules"
+var String controlChannel = "clcontroller/control"
+var String sysId = CLControllerSystemID.state.toString()
+var String jsonString = ""
+var String cmd = ""
+val actionsBroker = getActions("mqtt", "mqtt:broker:mosquitto")
+
+rule "Send System Command"
+when
+	Item CLControllerSystemCommand changed
+then
+	cmd = CLControllerSystemCommand.state.toString()
+	switch (cmd) {
+		case "Disable":
+			jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":0}"
+		case "Enable":
+			jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":1}"
+		case "Reboot":
+			jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":2}"
+		case "Request Status":
+			jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":3}" 
+	}
+
+	logInfo(fileName, "Publishing MQTT payload: " + jsonString)
+	actionsBroker.publishMQTT(controlChannel, jsonString)
+	CLControllerSystemCommand.postUpdate(NULL)
+end
+
+rule "Play Control Changes"
+when
+	Item CLControllerPlayerControl changed
+then
+	if (CLControllerPlayerControl.state == ON) {
+		jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":5}"
+		CLControllerAllSwitch.postUpdate(NULL)
+	}
+	else if (CLControllerPlayerControl.state == OFF) {
+		jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":4}"
+	}
+
+	logInfo(fileName, "Publishing MQTT payload: " + jsonString)
+	actionsBroker.publishMQTT(controlChannel, jsonString)
+end
+
+rule "All Lights Control Changes"
+when
+	Item CLControllerAllSwitch changed
+then
+	if (CLControllerAllSwitch.state == ON) {
+		jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":6}"
+		CLControllerPlayerControl.postUpdate(NULL)
+	}
+	else if (CLControllerAllSwitch.state == OFF) {
+		jsonString = "{\"client_id\":\"" + sysId + "\",\"command\":7}"
+	}
+
+	logInfo(fileName, "Publishing MQTT payload: " + jsonString)
+	actionsBroker.publishMQTT(controlChannel, jsonString)
+end
