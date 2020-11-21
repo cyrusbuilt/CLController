@@ -33,6 +33,7 @@
 #include "TaskScheduler.h"
 #include "TelemetryHelper.h"
 #include "RelayModule.h"
+#include "Playsheet.h"
 #include "config.h"         // This should be included last.
 
 #define FIRMWARE_VERSION "1.0"
@@ -284,7 +285,7 @@ void loadConfiguration() {
 
     Serial.print(F("INFO: Loading config file "));
     Serial.print(CONFIG_FILE_PATH);
-    Serial.println(F(" ... "));
+    Serial.print(F(" ... "));
     if (!filesystemMounted) {
         Serial.println(F("FAIL"));
         Serial.println(F("ERROR: Filesystem not mounted."));
@@ -306,28 +307,32 @@ void loadConfiguration() {
     }
 
     size_t size = configFile.size();
-    if (size > 1024) {
+    uint16_t freeMem = ESP.getMaxFreeBlockSize() - 512;
+    if (size > freeMem) {
         Serial.println(F("FAIL"));
-        Serial.println(F("ERROR: Config file size is too large. Using default config."));
+        Serial.print(F("ERROR: Not enough free memory to load document. Size = "));
+        Serial.print(size);
+        Serial.print(F(", Free = "));
+        Serial.println(freeMem);
         configFile.close();
         return;
     }
 
-    std::unique_ptr<char[]> buf(new char[size]);
-    configFile.readBytes(buf.get(), size);
-    configFile.close();
-
-    StaticJsonDocument<350> doc;
-    DeserializationError error = deserializeJson(doc, buf.get());
+    DynamicJsonDocument doc(freeMem);
+    DeserializationError error = deserializeJson(doc, configFile);
     if (error) {
         Serial.println(F("FAIL"));
         Serial.println(F("ERROR: Fail to parse config file to JSON. Using default config."));
-        buf.release();
+        configFile.close();
         return;
     }
 
+    doc.shrinkToFit();
+    configFile.close();
+
     String chipId = String(ESP.getChipId(), HEX);
     String defHostname = String(DEVICE_NAME) + "_" + chipId;
+
     config.hostname = doc.containsKey("hostname") ? doc["hostname"].as<String>() : defHostname;
     config.useDhcp = doc.containsKey("isDhcp") ? doc["isDhcp"].as<bool>() : false;
     
@@ -382,7 +387,6 @@ void loadConfiguration() {
     #endif
 
     doc.clear();
-    buf.release();
     Serial.println(F("DONE"));
 }
 
@@ -423,14 +427,10 @@ void doFactoryRestore() {
     Serial.println();
 }
 
-void playSequenceSheet() {
-    if (terminateSequence) {
-        return;
-    }
-
+void loadSequenceSheet() {
     Serial.print(F("INFO: Loading sequence file: "));
     Serial.print(PLAYSHEET_FILE_PATH);
-    Serial.println(F(" ..."));
+    Serial.print(F(" ..."));
 
     if (!filesystemMounted) {
         Serial.println(F("FAIL"));
@@ -454,60 +454,110 @@ void playSequenceSheet() {
         return;
     }
 
+    // Do we have enough free contiguous memory to load the file?
     size_t size = sequenceFile.size();
-    std::unique_ptr<char[]> buf(new char[size]);
-    sequenceFile.readBytes(buf.get(), size);
-    sequenceFile.close();
-
-    DynamicJsonDocument doc(size);
-    DeserializationError error = deserializeJson(doc, buf.get());
-    if (error) {
+    uint16_t freeMem = ESP.getMaxFreeBlockSize() - 512;
+    if (size > freeMem) {
         Serial.println(F("FAIL"));
-        Serial.println(F("ERROR: Failed to parse sequence file to JSON."));
-        buf.release();
+        Serial.print(F("ERROR: Not enough free memory to load document. Size = "));
+        Serial.print(size);
+        Serial.print(F(", Free = "));
+        Serial.println(freeMem);
+        sequenceFile.close();
         return;
     }
 
-    buf.release();
-    Serial.println(F("DONE"));
+    DynamicJsonDocument doc(freeMem);
+    DeserializationError error = deserializeJson(doc, sequenceFile);
+    if (error) {
+        Serial.println(F("FAIL"));
+        Serial.print(F("ERROR: Failed to parse sequence file to JSON: "));
+        Serial.println(error.c_str());
+        sequenceFile.close();
+        return;
+    }
 
-    runLED.on();
+    sequenceFile.close();
+    doc.shrinkToFit();
+    
     config.sheetName = doc["name"].as<String>();
-    Serial.print(F("INFO: Executing sequence sheet: "));
-    Serial.println(config.sheetName);
+    Playsheet.sheetName = config.sheetName.c_str();
+    
+    uint8_t modIdx = 0;
+    ModuleRelayState newState = ModuleRelayState::OPEN;
+    RelaySelect relay = RelaySelect::RELAY1;
 
     JsonArray sequences = doc["seq"].as<JsonArray>();
     for (auto sequence : sequences) {
+        Sequence seq;
+        JsonArray states = sequence["states"];
+        for (auto state : states) {
+            modIdx = state["modIdx"].as<uint8_t>();
+            if (strcmp(state["lsState"].as<const char*>(), "on") == 0) {
+                newState = ModuleRelayState::CLOSED;
+            }
+            else {
+                newState = ModuleRelayState::OPEN;
+            }
+
+            relay = (RelaySelect)state["lsIdx"].as<uint8_t>();
+            SequenceState theState(modIdx, newState, relay);
+            seq.states.push_back(theState);
+        }
+
+        seq.delay = sequence["delayMs"].as<unsigned long>();
+        Playsheet.sequences.push_back(seq);
+    }
+
+    doc.clear();
+    Serial.println(F("DONE"));
+}
+
+void playSequenceSheet() {
+    if (terminateSequence) {
+        return;
+    }
+
+    runLED.on();
+    Serial.print(F("INFO: Executing sequence sheet: "));
+    Serial.println(Playsheet.sheetName);
+
+    size_t count = Playsheet.sequences.size();
+    Serial.print(F("INFO: Sequence count: "));
+    Serial.println(count);
+    for (auto seq = Playsheet.sequences.begin(); seq != Playsheet.sequences.end(); seq++) {
         // This will introduce delays during sequences, but it beats blocking
         // other operations from processing and keeps the watchdog fed.
         // The ESP-32 would probably be better suited since we can run a
         // a second thread for running sequences and keep everything else
         // on the main loop.
+        Serial.println(F("DEBUG: OpLoop"));
         operationsLoop();
         if (terminateSequence) {
             break;
         }
 
-        JsonArray states = sequence["states"];
-        for (auto state : states) {
-            RelayModule module = getModule(state["modIdx"].as<uint8_t>());
-
-            String stateStr = state["lsState"].as<String>();
-            stateStr.trim();
-            stateStr.toLowerCase();
-
-            ModuleRelayState newState = "on" ? ModuleRelayState::CLOSED : ModuleRelayState::OPEN;
-            RelaySelect relay = (RelaySelect)state["lsIdx"].as<uint8_t>();
-            module.setState(relay, newState);
+        Serial.print(F("DEBUG: seq delay = "));
+        Serial.print(seq->delay);
+        Serial.print(F(", state count = "));
+        Serial.println(seq->states.size());
+        for (auto state = seq->states.begin(); state != seq->states.end(); state++) {
+            Serial.print(F("DEBUG: State modIdx = "));
+            Serial.print(state->moduleIndex);
+            Serial.print(F(", lsIdx = "));
+            Serial.print((uint8_t)state->lightStringIndex);
+            Serial.print(F(", lsState = "));
+            Serial.println((uint8_t)state->lightStringState);
+            getModule(state->moduleIndex).setState(state->lightStringIndex, state->lightStringState);
         }
 
-        delay(sequence["delayMs"].as<unsigned long>());
+        // delay for note duration + 30%
+        delay(seq->delay * 1.30);
     }
 
-    Serial.print(F("INFO: Finished running sequence: "));
-    Serial.println(config.sheetName);
-    doc.clear();
     runLED.off();
+    Serial.print(F("INFO: Finished running sequence: "));
+    Serial.println(Playsheet.sheetName);
 }
 
 bool reconnectMqttClient() {
@@ -725,6 +775,7 @@ void initFilesystem() {
     Serial.println(F("DONE"));
     setConfigurationDefaults();
     loadConfiguration();
+    loadSequenceSheet();
 }
 
 /**
@@ -791,12 +842,18 @@ void scanBusDevices() {
     byte error;
     byte address;
     int devices = 0;
+
+    Serial.print(F("DEBUG: SDA pin: "));
+    Serial.println(SDA);
+    Serial.print(F("DEBUG: SCL pin: "));
+    Serial.println(SCL);
     
     Serial.println(F("INFO: Beginning I2C bus scan ..."));
     for (address = 1; address < 127; address++) {
         Wire.beginTransmission(address);
         error = Wire.endTransmission();
         if (error == 0) {
+            devices++;
             Serial.print(F("INFO: I2C device found at address 0x"));
             if (address < 16) {
                 Serial.print(F("0"));
@@ -819,8 +876,6 @@ void scanBusDevices() {
 
             Serial.println(address, HEX);
         }
-
-        devices++;
     }
 
     if (devices == 0) {
@@ -934,6 +989,7 @@ void initSerial() {
 }
 
 void initComBus() {
+    Wire.begin();
     Serial.println(F("INIT: Initializing communication bus ..."));
     scanBusDevices();
     if (primaryExpanderFound) {
@@ -951,6 +1007,7 @@ void initComBus() {
         }
     }
     else {
+        terminateSequence = true;
         Serial.println(F("ERROR: Primary host bus controller not found!!"));
         // TODO HCF???
     }
@@ -960,7 +1017,12 @@ void initComBus() {
 
 void initRelayModules() {
     Serial.println(F("INIT: Initializing relay modules ..."));
-    
+    if (!primaryExpanderFound) {
+        Serial.println(F("FAIL"));
+        Serial.println(F("ERROR: No bus controller found."));
+        return;
+    }
+
     Serial.print(F("INIT: Init relay modules A and B at bus address: "));
     Serial.println(PRIMARY_I2C_ADDRESS, HEX);
     RelayModule moduleA(&primaryBus, RelayModulePort::PORTA);
@@ -971,7 +1033,8 @@ void initRelayModules() {
     moduleB.init();
     addModule(moduleB);
 
-    for (size_t i = 0; i < additionalBusses.size(); i++) {
+    // Skip ahead by 1 since the first bus is always the primary.
+    for (size_t i = 1; i < additionalBusses.size(); i++) {
         Serial.print(F("INIT: Init relay modules A and B at bus address: "));
         Serial.println(devicesFound.at(i), HEX);
         Adafruit_MCP23017 bus = getBus(i);
