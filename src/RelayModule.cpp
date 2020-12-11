@@ -75,6 +75,13 @@ uint8_t RelayModule::getRelayAddress(RelaySelect relay) {
 	return result;
 }
 
+bool RelayModule::detect() {
+	uint8_t address = this->getRelayAddress(RelaySelect::RELAY1);
+	this->_busController->pinMode(address, INPUT);
+	this->_busController->pullUp(address, LOW);
+	return this->_busController->digitalRead(address) == LOW;
+}
+
 void RelayModule::init() {
 	for (uint8_t i = 1; i <= 8; i++) {
 		uint8_t address = this->getRelayAddress((RelaySelect)i);

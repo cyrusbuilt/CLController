@@ -3,6 +3,8 @@
 
 #include <IPAddress.h>
 
+//#define MODEL_1                                     // The Model 1 controller used 5 PowerRelay FeatherWing modules instead of RelayModule over I2C.
+//#define DEBUG                                       // Enable additional debug output.
 #define DEVICE_NAME "CLCONTROLLER"                  // The device name (hostname).
 #define BAUD_RATE 115200                            // The BAUD rate (speed) of the serial port (console).
 #define ENABLE_OTA                                  // Comment to disable OTA (over-the-air) firmware updates.

@@ -1384,6 +1384,51 @@
 					"lsState": "off"
 				}
 			],
+			"delayMs": 5000
+		},
+		{
+			"states": [
+				{
+					"modIdx": 0,
+					"lsIdx": 1,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 2,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 3,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 4,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 5,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 6,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 7,
+					"lsState": "on"
+				},
+				{
+					"modIdx": 0,
+					"lsIdx": 8,
+					"lsState": "on"
+				}
+			],
 			"delayMs": 10000
 		}
 	]

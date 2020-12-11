@@ -8,22 +8,26 @@
  * The main controller board has an MCP23017 which provides 16 digital
  * GPIOs and is located at PRIMARY_I2C_ADDRESS. This is what controls the 8 outputs
  * on each of the 2 ports on the main board.  However, it is possible to expand
- * this even further by adding additional MCP23017s on the I2C bus.  As such, the
- * main board provides a 2-pin I2C header that additional expanders to connect to.
+ * this even further by adding additional MCP23017s (7 additional max) on the I2C bus.
+ * As such, the main board provides a 2-pin I2C header that additional expanders to connect to.
  */
 
 // TODO Possible design changes:
 // 1) Change ESP8266 to ESP32
-// 2) Split up into further modules - 1] Main controller board. 2] I/O module (MCP3017). 3] Relay modules (include ULN2803)
-// 3) Create abstraction library for relay module (it's essentially an 8bit interface).
-// 4) Come up with a way to detect relay module presence.
+// 2) Split up into further modules - 1] Main controller board. 2] I/O module (MCP3017 and ULN2803). 3] Relay modules. -- Done
+// 3) Create abstraction library for relay module (it's essentially an 8bit interface).  -- Done
+// 4) Come up with a way to detect relay module presence. -- Done (sort of)
+// 12/2/2020 - There is no way to do #4 without adding additional circuitry to the relay module and at least
+// one I/O per module for sense.  This can be done by keeping the original design but removing one relay per
+// module and using that I/O as an input tied to VSS via a resistor (5.6K ?).  The MCP23017 does not have any
+// analog pins, so we can't do an analog read to get resistance. We'd can only look for low/high. That being said,
+// the firmware currently (unreliably) does this by checking to see if the pin on the MCP23017 is LOW after INIT
+// (indicating the pin is not floating, the default state).
 
 #include <Arduino.h>
 #include <FS.h>
 #include <time.h>
-#include <Wire.h>
 #include <vector>
-#include "Adafruit_MCP23017.h"
 #include "ArduinoJson.h"
 #include "ESPCrashMonitor-master/ESPCrashMonitor.h"
 #include "Console.h"
@@ -32,16 +36,45 @@
 #include "ResetManager.h"
 #include "TaskScheduler.h"
 #include "TelemetryHelper.h"
+#include "config.h"
+#ifdef MODEL_1
+#include "Relay.h"
+#else
+#include <Wire.h>
+#include "Adafruit_MCP23017.h"
 #include "RelayModule.h"
+#endif
 #include "Playsheet.h"
-#include "config.h"         // This should be included last.
 
 #define FIRMWARE_VERSION "1.0"
 
-#define PRIMARY_I2C_ADDRESS 0x20
-
+// This firmware provides backward compatibility with the original (Model 1)
+// CLController board which just consisted of an Adafruit Huzzah ESP8266 and
+// 5 Adafruit PowerRelay FeatherWings. By uncommenting the MODEL_1 define in
+// config.h, this firmware can be configured for the old controller board.
+#ifdef MODEL_1
+#define PIN_RELAY_5 12
+#define PIN_RELAY_4 13
+#define PIN_RELAY_3 14
+#define PIN_RELAY_2 16
+#define PIN_RELAY_1 15
+#define PIN_WIFI_LED 2
+#else
+#define PRIMARY_I2C_ADDRESS 0
+#define I2C_ADDRESS_OFFSET 32
 #define PIN_WIFI_LED 16
 #define PIN_RUN_LED 14
+#endif
+
+#ifdef MODEL_1
+enum class RelaySelect : uint8_t {
+    RELAY1 = 1,
+    RELAY2 = 2,
+    RELAY3 = 3,
+    RELAY4 = 4,
+    RELAY5 = 5
+};
+#endif
 
 using namespace std;
 
@@ -63,41 +96,21 @@ Task tCheckWiFi(CHECK_WIFI_INTERVAL, TASK_FOREVER, &onCheckWifi);
 Task tCheckMqtt(CHECK_MQTT_INTERVAL, TASK_FOREVER, &onCheckMqtt);
 Task tClockSync(CLOCK_SYNC_INTERVAL, TASK_FOREVER, &onSyncClock);
 Scheduler taskMan;
+#ifdef MODEL_1
+vector<Relay> relays;
+#else
 bool primaryExpanderFound = false;
-std::vector<byte> devicesFound;
-std::vector<reference_wrapper<Adafruit_MCP23017>> additionalBusses;
-std::vector<reference_wrapper<RelayModule>> relayModules;
+vector<byte> devicesFound;
+vector<Adafruit_MCP23017> additionalBusses;
+vector<RelayModule> relayModules;
 Adafruit_MCP23017 primaryBus;
-LED wifiLED(PIN_WIFI_LED, NULL);
 LED runLED(PIN_RUN_LED, NULL);
+#endif
+LED wifiLED(PIN_WIFI_LED, NULL);
 config_t config;
 bool filesystemMounted = false;
 volatile bool terminateSequence = false;
 volatile SystemState sysState = SystemState::BOOTING;
-
-void addBus(Adafruit_MCP23017 &bus) {
-    additionalBusses.push_back(std::ref(bus));
-}
-
-Adafruit_MCP23017 getBus(std::size_t index) {
-    if (index < 0 || index > additionalBusses.size() - 1) {
-        index = 0;
-    }
-
-    return additionalBusses.at(index).get();
-}
-
-void addModule(RelayModule &module) {
-    relayModules.push_back(std::ref(module));
-}
-
-RelayModule getModule(std::size_t index) {
-    if (index < 0 || index > relayModules.size() - 1) {
-        index = 0;
-    }
-
-    return relayModules.at(index).get();
-}
 
 /**
  * Synchronize the local system clock via NTP. Note: This does not take DST
@@ -154,7 +167,9 @@ void resumeNormal() {
     Serial.println(F("INFO: Resuming normal operation..."));
     taskMan.enableAll();
     wifiLED.off();
+    #ifndef MODEL_1
     runLED.off();
+    #endif
     sysState = SystemState::NORMAL;
     terminateSequence = false;
     publishSystemState();
@@ -174,7 +189,9 @@ void printNetworkInfo() {
     Serial.println(WiFi.dnsIP());
     Serial.print(F("INFO: MAC address: "));
     Serial.println(WiFi.macAddress());
-    WiFi.printDiag(Serial);
+    #ifdef DEBUG
+        WiFi.printDiag(Serial);
+    #endif
 }
 
 /**
@@ -483,8 +500,13 @@ void loadSequenceSheet() {
     config.sheetName = doc["name"].as<String>();
     Playsheet.sheetName = config.sheetName.c_str();
     
+    #ifdef MODEL_1
+    RelayState newState = RelayOpen;
+    const uint8_t modIdx = 0;
+    #else
     uint8_t modIdx = 0;
     ModuleRelayState newState = ModuleRelayState::OPEN;
+    #endif
     RelaySelect relay = RelaySelect::RELAY1;
 
     JsonArray sequences = doc["seq"].as<JsonArray>();
@@ -492,16 +514,31 @@ void loadSequenceSheet() {
         Sequence seq;
         JsonArray states = sequence["states"];
         for (auto state : states) {
+            // We don't care about the module index if we're running on a Model 1 controller.
+            #ifndef MODEL_1
             modIdx = state["modIdx"].as<uint8_t>();
+            #endif
             if (strcmp(state["lsState"].as<const char*>(), "on") == 0) {
+                #ifdef MODEL_1
+                newState = RelayClosed;
+                #else
                 newState = ModuleRelayState::CLOSED;
+                #endif
             }
             else {
+                #ifdef MODEL_1
+                newState = RelayOpen;
+                #else
                 newState = ModuleRelayState::OPEN;
+                #endif
             }
 
             relay = (RelaySelect)state["lsIdx"].as<uint8_t>();
+            #ifdef MODEL_1
+            SequenceState theState(modIdx, newState, (uint8_t)relay);
+            #else
             SequenceState theState(modIdx, newState, relay);
+            #endif
             seq.states.push_back(theState);
         }
 
@@ -518,7 +555,6 @@ void playSequenceSheet() {
         return;
     }
 
-    runLED.on();
     Serial.print(F("INFO: Executing sequence sheet: "));
     Serial.println(Playsheet.sheetName);
 
@@ -526,36 +562,58 @@ void playSequenceSheet() {
     Serial.print(F("INFO: Sequence count: "));
     Serial.println(count);
     for (auto seq = Playsheet.sequences.begin(); seq != Playsheet.sequences.end(); seq++) {
-        // This will introduce delays during sequences, but it beats blocking
+        #ifndef MODEL_1
+        if (runLED.isOff()) {
+            runLED.on();
+        }
+        #endif
+
+        // This will introduce slight delays during sequences, but it beats blocking
         // other operations from processing and keeps the watchdog fed.
-        // The ESP-32 would probably be better suited since we can run a
+        // The ESP-32 would probably be better suited for this since we can run a
         // a second thread for running sequences and keep everything else
-        // on the main loop.
+        // on the main loop.  The alternative would be to switch to using
+        // the ESP8266 RTOS SDK. But that would mean refactoring the entire
+        // project as we would no longer be using the Arduino Core (the Arduino
+        // core for ESP8266 currently uses the non-RTOS SDK under the hood).
+        // Each dependency would need to be evaluated to see which (if any)
+        // are compatible and find replacements or write new ones from scratch.
+        // I'd rather not do all that yet.
         Serial.println(F("DEBUG: OpLoop"));
         operationsLoop();
         if (terminateSequence) {
             break;
         }
 
+        #ifdef DEBUG
         Serial.print(F("DEBUG: seq delay = "));
         Serial.print(seq->delay);
         Serial.print(F(", state count = "));
         Serial.println(seq->states.size());
+        #endif
         for (auto state = seq->states.begin(); state != seq->states.end(); state++) {
+            #ifdef DEBUG
             Serial.print(F("DEBUG: State modIdx = "));
             Serial.print(state->moduleIndex);
             Serial.print(F(", lsIdx = "));
             Serial.print((uint8_t)state->lightStringIndex);
             Serial.print(F(", lsState = "));
             Serial.println((uint8_t)state->lightStringState);
-            getModule(state->moduleIndex).setState(state->lightStringIndex, state->lightStringState);
+            #endif
+            #ifdef MODEL_1
+            relays.at(state->lightStringIndex - 1).setState(state->lightStringState);
+            #else
+            relayModules.at(state->moduleIndex).setState(state->lightStringIndex, state->lightStringState);
+            #endif
         }
 
         // delay for note duration + 30%
         delay(seq->delay * 1.30);
     }
 
+    #ifndef MODEL_1
     runLED.off();
+    #endif
     Serial.print(F("INFO: Finished running sequence: "));
     Serial.println(Playsheet.sheetName);
 }
@@ -610,45 +668,46 @@ void onCheckMqtt() {
 }
 
 void allRelaysOn() {
-    for (size_t i = 0; i < relayModules.size(); i++) {
-        Serial.print(F("INFO: Turning all relays on module at address "));
-        Serial.print(i);
-        Serial.println(F(" on ..."));
-        getModule(i).allRelaysClosed();
+    uint8_t index = 0;
+    #ifdef MODEL_1
+    for (auto relayModule = relays.begin(); relayModule != relays.end(); relayModule++) {
+        Serial.print(F("INFO: Turning on relay "));
+        Serial.println(index + 1);
+        relayModule->close();
+        index++;
     }
+    #else
+    for (auto module = relayModules.begin(); module != relayModules.end(); module++) {
+        Serial.print(F("INFO: Turning all relays on module at address "));
+        Serial.print(index);
+        Serial.println(F(" on ..."));
+        module->allRelaysClosed();
+        index++;
+    }
+    #endif
 }
 
 void allRelaysOff() {
-    for (size_t i = 0; i < relayModules.size(); i++) {
-        Serial.print(F("INFO: Turning all relays on module at address "));
-        Serial.print(i);
-        Serial.println(F(" of ..."));
-        getModule(i).allRelaysOpen();
+    uint8_t index = 0;
+    #ifdef MODEL_1
+    for (auto relayModule = relays.begin(); relayModule != relays.end(); relayModule++) {
+        Serial.print(F("INFO: Turning of relay "));
+        Serial.println(index + 1);
+        relayModule->open();
+        index++;
     }
+    #else
+    for (auto module = relayModules.begin(); module != relayModules.end(); module++) {
+        Serial.print(F("INFO: Turning all relays on module at address "));
+        Serial.print(index);
+        Serial.println(F(" off ..."));
+        module->allRelaysOpen();
+        index++;
+    }
+    #endif
 }
 
-void handleControlRequest(const JsonObject &json) {
-    if (json.containsKey("client_id")) {
-        String id = json["client_id"].as<String>();
-        id.toUpperCase();
-        if (!id.equals(config.hostname)) {
-            Serial.println(F("INFO: Control message not intended for this host. Ignoring..."));
-            return;
-        }
-    }
-    else {
-        Serial.println(F("WARN: MQTT message does not contain client ID. Ignoring..."));
-        return;
-    }
-
-    if (!json.containsKey("command")) {
-        Serial.println(F("WARN: MQTT message does not contain a control command. Ignoring..."));
-        return;
-    }
-
-    // When system is the "disabled" state, the only command it will accept
-    // is "enable". All other commands are ignored.
-    ControlCommand cmd = (ControlCommand)json["command"].as<uint8_t>();
+void handleControlRequest(ControlCommand cmd) {
     if (sysState == SystemState::DISABLED && cmd != ControlCommand::ENABLE) {
         // THOU SHALT NOT PASS!!! 
         // We can't process this command because we are disabled.
@@ -701,10 +760,18 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     Serial.print(F("INFO: [MQTT] Message arrived: ["));
     Serial.print(topic);
     Serial.print(F("] "));
-    Serial.println((char*)payload);
+
+    // It's a lot easier to deal with if we just convert the payload
+    // to a string first.
+    String msg;
+    for (unsigned int i = 0; i < length; i++) {
+        msg += (char)payload[i];
+    }
+
+    Serial.println(msg);
 
     StaticJsonDocument<100> doc;
-    DeserializationError error = deserializeJson(doc, (char*)payload);
+    DeserializationError error = deserializeJson(doc, msg.c_str());
     if (error) {
         Serial.print(F("ERROR: Failed to parse MQTT message to JSON: "));
         Serial.println(error.c_str());
@@ -712,9 +779,33 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
         return;
     }
 
+    if (doc.containsKey("client_id")) {
+        String id = doc["client_id"].as<String>();
+        id.toUpperCase();
+        if (!id.equals(config.hostname)) {
+            Serial.println(F("INFO: Control message not intended for this host. Ignoring..."));
+            doc.clear();
+            return;
+        }
+    }
+    else {
+        Serial.println(F("WARN: MQTT message does not contain client ID. Ignoring..."));
+        doc.clear();
+        return;
+    }
+
+    if (!doc.containsKey("command")) {
+        Serial.println(F("WARN: MQTT message does not contain a control command. Ignoring..."));
+        doc.clear();
+        return;
+    }
+
+    // When system is the "disabled" state, the only command it will accept
+    // is "enable". All other commands are ignored.
+    ControlCommand cmd = (ControlCommand)doc["command"].as<uint8_t>();
+
     doc.clear();
-    JsonObject json = doc.as<JsonObject>();
-    handleControlRequest(json);
+    handleControlRequest(cmd);
 }
 
 /**
@@ -729,7 +820,9 @@ void failSafe() {
     Serial.println();
     Serial.println(F("ERROR: Entering failsafe (config) mode..."));
     taskMan.disableAll();
+    #ifndef MODEL_1
     runLED.off();
+    #endif
     wifiLED.on();
     Console.enterCommandInterpreter();
 }
@@ -838,18 +931,16 @@ void connectWifi() {
     }
 }
 
+#ifndef MODEL_1
 void scanBusDevices() {
     byte error;
     byte address;
     int devices = 0;
 
-    Serial.print(F("DEBUG: SDA pin: "));
-    Serial.println(SDA);
-    Serial.print(F("DEBUG: SCL pin: "));
-    Serial.println(SCL);
-    
+    // NOTE: We can have a max of only (8) MCP23017 chips connected to the bus at a time.
+    // This gives a range of addresses 0 - 7 (which really translates to 32 - 39).
     Serial.println(F("INFO: Beginning I2C bus scan ..."));
-    for (address = 1; address < 127; address++) {
+    for (address = 32; address < 40; address++) {
         Wire.beginTransmission(address);
         error = Wire.endTransmission();
         if (error == 0) {
@@ -861,11 +952,12 @@ void scanBusDevices() {
 
             Serial.print(address, HEX);
             Serial.println(F("!"));
-            if (!primaryExpanderFound && address == PRIMARY_I2C_ADDRESS) {
+            uint8_t realAddress = address - I2C_ADDRESS_OFFSET;
+            if (!primaryExpanderFound && realAddress == PRIMARY_I2C_ADDRESS) {
                 primaryExpanderFound = true;
             }
             else {
-                devicesFound.push_back(address);
+                devicesFound.push_back(realAddress);
             }
         }
         else if (error == 4) {
@@ -885,6 +977,7 @@ void scanBusDevices() {
         Serial.println(F("INFO: Scan complete."));
     }
 }
+#endif
 
 /**
  * Initializes the WiFi network interface.
@@ -981,29 +1074,35 @@ void onCheckWifi() {
 
 void initSerial() {
     Serial.begin(BAUD_RATE);
-    Serial.setDebugOutput(true);
+    #ifdef DEBUG
+        const bool debug = true;
+    #else
+        const bool debug = false;
+    #endif
+    Serial.setDebugOutput(debug);
     Serial.println();
     Serial.print(F("CLController v"));
     Serial.print(FIRMWARE_VERSION);
     Serial.println(F(" booting ..."));
 }
 
+#ifndef MODEL_1
 void initComBus() {
-    Wire.begin();
     Serial.println(F("INIT: Initializing communication bus ..."));
+    Wire.begin();
     scanBusDevices();
     if (primaryExpanderFound) {
         Serial.println(F("INFO: Found primary host bus controller."));
         Serial.print(F("INFO: Secondary bus controllers found: "));
         Serial.println(devicesFound.size());
         
-        primaryBus.begin(PRIMARY_I2C_ADDRESS);
-        addBus(primaryBus);  // The primary bus controller should always be at index 0.
+        primaryBus.begin((uint8_t)PRIMARY_I2C_ADDRESS);
+        additionalBusses.push_back(primaryBus);  // The primary bus controller should always be at index 0.
 
         for (std::size_t i = 0; i < devicesFound.size(); i++) {
             Adafruit_MCP23017 newBus;
             newBus.begin(devicesFound.at(i));
-            addBus(newBus);
+            additionalBusses.push_back(newBus);
         }
     }
     else {
@@ -1014,10 +1113,39 @@ void initComBus() {
 
     Serial.println(F("INIT: Comm bus initialization complete."));
 }
+#endif
 
 void initRelayModules() {
     Serial.println(F("INIT: Initializing relay modules ..."));
+
+    #ifdef MODEL_1
+    const uint8_t pins[5] = {
+        PIN_RELAY_1,
+        PIN_RELAY_2,
+        PIN_RELAY_3,
+        PIN_RELAY_4,
+        PIN_RELAY_5
+    };
+
+    for (uint8_t i = 0; i < 5; i++) {
+        String name = "RELAY_" + String(i);
+        Relay newRelay(pins[i], NULL, name.c_str());
+        newRelay.init();
+        relays.push_back(newRelay);
+        Serial.print(F("INIT: Configured relay "));
+        Serial.println(name);
+    }
+    #else
     if (!primaryExpanderFound) {
+        // NOTE: I actually struggle with this one. My gut says if we can't even detect
+        // the onboard I/O expander, then we probably should just fail. On the other hand,
+        // what if the onboard chip failed or was removed, but the user is still trying
+        // to use the main board with an expansion module and doesn't care that that the
+        // onboard expander is missing (or toast)? Should we still allow the system to
+        // continue working with *any* I/O expander we can detect? Or continue to assume
+        // that if the primary failed, we probably have bigger problems but force it
+        // to be a condition to function that the primary chip be present even if the
+        // playsheet doesn't use it?
         Serial.println(F("FAIL"));
         Serial.println(F("ERROR: No bus controller found."));
         return;
@@ -1026,27 +1154,48 @@ void initRelayModules() {
     Serial.print(F("INIT: Init relay modules A and B at bus address: "));
     Serial.println(PRIMARY_I2C_ADDRESS, HEX);
     RelayModule moduleA(&primaryBus, RelayModulePort::PORTA);
-    moduleA.init();
-    addModule(moduleA);
+    if (moduleA.detect()) {
+        Serial.println(F("INFO: Detected relay module 0 (port A, bus 0)"));
+        moduleA.init();
+        relayModules.push_back(moduleA);
+    }
 
     RelayModule moduleB(&primaryBus, RelayModulePort::PORTB);
-    moduleB.init();
-    addModule(moduleB);
+    if (moduleB.detect()) {
+        Serial.println(F("INFO: Detected relay module 1 (port A, bus 0)"));
+        moduleB.init();
+        relayModules.push_back(moduleB);
+    }
 
     // Skip ahead by 1 since the first bus is always the primary.
     for (size_t i = 1; i < additionalBusses.size(); i++) {
         Serial.print(F("INIT: Init relay modules A and B at bus address: "));
         Serial.println(devicesFound.at(i), HEX);
-        Adafruit_MCP23017 bus = getBus(i);
+        Adafruit_MCP23017 bus = additionalBusses.at(i);
 
         RelayModule newModuleA(&bus, RelayModulePort::PORTA);
-        newModuleA.init();
-        addModule(newModuleA);
+        if (newModuleA.detect()) {
+            Serial.print(F("INFO: Detected relay module "));
+            Serial.print(i + 1);
+            Serial.print(F(" (port A, bus "));
+            Serial.print(i);
+            Serial.println(F(")"));
+            newModuleA.init();
+            relayModules.push_back(newModuleA);
+        }
 
         RelayModule newModuleB(&bus, RelayModulePort::PORTB);
-        newModuleB.init();
-        addModule(newModuleB);
+        if (newModuleB.detect()) {
+            Serial.print(F("INFO: Detected relay module "));
+            Serial.print(i + 2);
+            Serial.print(F(" (port B, bus "));
+            Serial.print(i);
+            Serial.println(F(")"));
+            newModuleB.init();
+            relayModules.push_back(newModuleB);
+        }
     }
+    #endif
 
     Serial.println(F("INIT: Relay module initialization complete."));
 }
@@ -1055,8 +1204,10 @@ void initOutputs() {
     Serial.print(F("INIT: Initializing outputs ..."));
     wifiLED.init();
     wifiLED.on();
+    #ifndef MODEL_1
     runLED.init();
     runLED.on();
+    #endif
     Serial.println(F("DONE"));
 }
 
@@ -1162,6 +1313,7 @@ void initConsole() {
     Console.onConsoleInterrupt(failSafe);
     Console.onAllLightsOn(allRelaysOn);
     Console.onAllLightsOff(allRelaysOff);
+    Console.onResumeCommand(resumeNormal);
 
     Serial.println(F("DONE"));
 }
@@ -1211,7 +1363,9 @@ void setup() {
     initSerial();
     initCrashMonitor();
     initOutputs();
+    #ifndef MODEL_1
     initComBus();
+    #endif
     initRelayModules();
     initFilesystem();
     initWiFi();

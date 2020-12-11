@@ -30,6 +30,7 @@ class RelayModule
 {
 public:
 	RelayModule(Adafruit_MCP23017 *busController, RelayModulePort port);
+	bool detect();
 	void init();
 	void setState(RelaySelect relay, ModuleRelayState state);
 	ModuleRelayState getState(RelaySelect relay);

@@ -2,6 +2,8 @@
 
 ESP8266-based Christmas Lights Controller (Arduino)
 
+[![Build Status](https://travis-ci.com/cyrusbuilt/CLController.svg?branch=master)](https://travis-ci.com/cyrusbuilt/CLController)
+
 The code in this repository represents the firmware for the CLController main module, as well as some components for integrating with [OpenHAB2](https://openhab.org). CLController is a [PlatformIO](https://platformio.org) project and is meant to essentially a multi-module outlet controller, with the idea being that you can control multiple string of traditional Christmas light strings (this is not a pixel controller). Given the hardware design however, it is possible to use this device for multiple applications.  I can be monitored and controlled via [MQTT](https://mqtt.org).  Since there is an [ESP8266](https://www.adafruit.com/product/2471) at the heart of it, that means it is WiFi-enabled and is capable of OTA (Over-the-Air) firmware and configuration updates.
 
 ## Theory of Operation
@@ -11,9 +13,43 @@ CLController consists of one or more combinations of the following 3 hardware co
 - CLController Relay Module
 - CLController I/O Expansion Module
 
-The bare-minimum configuration would be the CLController Main Board and (1) Relay Module.  Each relay module allows control of up to 8 circuits at 10A (MAX) per cicuit. The main control board allows up to (2) Relay Modules to be connected to it providing a total of 16 switched circuits.  You can expand this further by connecting an I/O expansion module.  Each expansion module allows you to daisy chain another expansion module and also supports 2 more relay modules per expansion module. The expansion modules connect using the 2-Wire (I2C) bus an are address configurable (all the main control module is hard-wired for address 0x20).  Each expansion module is auto-detected and intialized during boot.
+The bare-minimum configuration would be the CLController Main Board and (1) Relay Module.  Each relay module allows control of up to 8 circuits at 10A (MAX) per cicuit. The main control board allows up to (2) Relay Modules to be connected to it providing a total of 16 switched circuits.  You can expand this further by connecting an I/O expansion module (up to 7 max - providing a total of 128 possible relays max).  Each expansion module allows you to daisy chain another expansion module and also supports 2 more relay modules per expansion module. The expansion modules connect using the 2-Wire (I2C) bus and are address-configurable (the main control module is hard-wired for address 0x20).  Each expansion module is auto-detected and intialized during boot.
 
 CLController uses a concept of "Playsheets" which is basically a JSON file containing a collection of sequences that fire the relays in the appropriate order at the appropriate time.  Each "sequence" contains a list of "states" followed by a delay in milliseconds.  Each "state" contains the relay module index, light string index (relay number), and state ("on/off").
+
+The following is an example of the playsheet schema:
+
+```json
+{
+    "name": "Example",
+    "seq": [
+        {
+            "states": [
+                {
+                    "modIdx": 0,
+                    "lsIdx": 1,
+                    "lsState": "on"
+                },
+                ...
+            ],
+            "delayMs": 600
+        },
+        ...
+    ]
+}
+```
+
+- name = The play sheet name.
+- seq = An array of sequences.
+- states = An array of states.
+- modIdx = Relay Module Index. 0 is the first relay module (port A on the main board).
+- lsIdx = Light String Index. This is the index (address) of the relay to control (1 - 8).
+- lsState = The state to set "on" or "off".
+- delayMs = The delay in milliseconds before transitioning to the next state.
+
+## Architecture
+
+CLController currently uses an ESP8266 MCU at it's heart. Unfortunately, the ESP8266 does not have a large number of GPIO pins. So to control the number of relays we need to, the main board (and the I/O expansion board) includes an MCP23017 2 port (8 GPIOs per port) I2C I/O expander paired with (2) ULN2803 Darlington arrays (each provides 8 outputs). The ULN2803s act as relay drivers. Thus allowing us to control up to 16 relays per expander. You can have a maximum of (8) MCP23017 chips on the I2C bus at a time, allowing for a grand total of 128 possible relays per CLController.  You can, of course, set up multiple CLController boards on your network allowing for even more control, but currently, the CLController boards do not communicate with each other and have no way of sharing playsheets. That being said.... if you need to control more than 128 strings of lights on one controller... you have a very impressive setup and an even more impressive utility bill. It's possible that you could break up the sequences across multiple playsheets and send each sheet to each CLController involved OTA, then send the run command to all the controllers over MQTT.  There might be timing issues depending on how long it takes each controller to recieve the command and begin executing though, but something to consider.
 
 ## Configuration
 
@@ -84,3 +120,47 @@ After you've configured everything the way you need it (as discussed above), bui
 NOTE: The first time you flash the Huzzah, you need to do so over serial (since the OTA code isn't there yet), but subsequent uploads can be done via OTA if configured properly.
 
 The next thing to do is connect the Huzzah to your computer using an FTDI cable like [this one](https://www.adafruit.com/product/70?gclid=EAIaIQobChMIm7-50ZiZ5AIVlIvICh284QPxEAQYBCABEgJkcPD_BwE) and then configure the port in platformio.ini like so:
+
+```ini
+[env:huzzah]
+monitor_speed = 115200
+monitor_port = /dev/cu.usbserial-AL05HSL2  ; Change this to match your port if necessary
+```
+
+With the above mentioned FTDI cable attached to my MacBook, the port appears as it does in the config file above (usually PlatformIO is pretty good about auto-detecting the port for you).
+
+Now all you have to do is flash the firmware onto the Huzzah. You can do this by first pressing and holding the "GPIO" button and then press the "reset" button and let go of both on the Huzzah to put it into flash mode (this is not necessary when you flash via OTA), then click the "Upload and Monitor" task in the PlatformIO menu or by typing the following into the terminal:
+
+```bash
+> platformio run --target upload
+> platformio device monitor --baud 115200 --port /dev/cu.usbserial-AL05HSL2
+```
+
+Once complete, press the "reset" button on the Huzzah. You should see the device boot up in the serial console. Now put the device back into flash mode.  Configure the playsheet.json and config.json files as needed and click the "Upload File System Image" task in the PlatformIO menu. When finished, press the "reset" button again and the device will reboot and come back up with your new configuration settings.
+
+## OTA Updates
+
+If you wish to be able to upload firmware updates Over-the-Air, then besides leaving the ENABLE_OTA option uncommented, you will also need to uncomment all the upload_* lines in platformio.ini, and change the line 'upload_port = ' line to reflect the IP of the device and the line '--auth=' to reflect whatever OTA_PASSWORD is set to. Then when you click "upload" from the PlatformIO tasks (or if you execute 'platformio run --target upload' from the command line) it should upload directly over WiFi and once completed, the device will automatically flash itself and reboot with the new version. If you wish to upload a new configuration file, you can also do this via OTA. Assuming the above-mentioned settings are configured, you can then click "Upload File System Image" from the PlatformIO project tasks.
+
+## Serial Console
+
+If the device ever fails to connect to WiFi or if you press the 'I' key on your keyboard while in the serial console, normal operation of the device is suspended and the device will fall into a 'fail-safe' mode and present the user with a command menu, which can be use to re-configure the device, reboot, manually turn lights on and off, etc.
+
+## Dependencies
+
+The firmware dependencies will be installed automatically at compile-time. However, if you wish to install dependencies prior to compiling (for intellisense or to clear warnings/errors in the VSCode editor) you can run the following command:
+
+```bash
+> platformio lib install
+```
+
+## Actually controlling the Christmas lights
+
+This is the dangerous part.  The generaly idea is to use the relays to switch strings of lights on and off.  There are a number of ways to do this:
+
+1) Splice into the outlet wiring of an existing outlet/power strip/etc.
+2) Cut one or more extension cords and wire into the relays.
+3) Cut one of the power wires on the light strings themselves and wire into the relays.
+4) Use a bussed electrical circuit that uses the relays to switch individual circuits (my preferred choice).
+
+DISCLAIMER: You are dealing with HIGH VOLTAGE here.  Mains wiring is absolutely lethal and I AM NOT LIABLE for any injuries or death as a result of any mistakes you or anyone else make implementing this controller in any way, shape, or form. If you don't know what you are doing, DON'T DO IT. Ask a qualified engineer or electrician to do this part for you. That being said, the way I did it was to mount all the electronics in an empty electrical box using stand-offs. Then I mounted 3 high-voltage electrical bus bars like those found in a breaker box. I then bought a heavy duty extension cord that can handle at least 15 Amps @ 120 Volts AC and cut the end off. I wired the 3 leads into the 3 different bus bars (which were mounted with sufficient distance from each other). Then I bought 16 lower-grade cheap extension cords and cut the plugs off and wired the ground and neutral wires into the matching bus bars. I wired the hot wire from each into the numbered terminals on the relays and then labeled each extension cord. I then cut pieces of heavy guage wire and used those to wire the COM on each relay to the Hot bus bar.  That way I can plug the box into a 15A outlet and then plug each string into the separate extension cord coming out of the box. (If you do this, you need to verify the outlet you are plugging into provides at least 15A and there is no other load on that circuit that would lead to an overload... It might even be worth adding a fuse to the input on the box to be extra safe).  This essentially creates power distribution box similar to a breaker box except you are using relays instead of breakers.

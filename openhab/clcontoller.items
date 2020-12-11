@@ -3,7 +3,7 @@ String CLControllerVersion "Firmware version: [%s]" { channel="mqtt:topic:mosqui
 Number CLControllerState <status> { channel="mqtt:topic:mosquitto:clcontroller:SysState" }
 String CLControllerSystemCommand "Actions" <switch>
 
-Number CLControllerPlayer <mediacontrol> { channel="mqtt:topic:mosquitto:clcontroller:PlayingSheet" [profile="transform:JS", function="playSeqTransform.js"] }
+String CLControllerPlayer "[%s]" <mediacontrol> { channel="mqtt:topic:mosquitto:clcontroller:PlayingSheet" }
 String CLControllerSheetName "Executing sheet: [%s]" { channel="mqtt:topic:mosquitto:clcontroller:SheetName" }
 Switch CLControllerPlayerControl "Play/Pause Sheet" <slider>
 Switch CLControllerAllSwitch "All Lights" <slider>

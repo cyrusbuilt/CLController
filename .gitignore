@@ -15,3 +15,6 @@ include/
 
 # Archives
 *.zip
+
+# Backup files
+*.bak

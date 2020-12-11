@@ -1,7 +1,7 @@
 sitemap clcontroller label="CLController" {
 	// NOTE: commands and states taken from TelemetryHelper.h
 	Frame label="System Status and Control" {
-		Text item=CLControlerSystemID
+		Text item=CLControllerSystemID
 		Text item=CLControllerVersion
 		Text item=CLControllerState label="System State: Booting" visibility=[CLControllerState==0]
 		Text item=CLControllerState label="System State: Normal" visibility=[CLControllerState==1]
@@ -15,8 +15,7 @@ sitemap clcontroller label="CLController" {
 	Frame label="Light String Status and Control" {
 		Text item=CLControllerSheetName
 		Switch item=CLControllerPlayerControl
-		Text item=CLControllerPlayer label="Playing Sequence: true" visibility=[CLControllerPlayer==1]
-		Text item=CLControllerPlayer label="Playing Sequence: false" visibility=[CLControllerPlayer==0,CLControllerPlayer==NULL,CLControllerPlayer==UNDEF]
+		Text item=CLControllerPlayer label="Playing Sequence: "
 		Switch item=CLControllerAllSwitch
 	}
 }
