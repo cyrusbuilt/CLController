@@ -1,8 +1,22 @@
+import java.time.ZonedDateTime
+import org.eclipse.xtext.xbase.lib.Functions
+
+val Functions$Function1<ZonedDateTime,ZonedDateTime> getNextAlarm = [ ZonedDateTime s |
+	var newTime = s
+	if (newTime < ZonedDateTime.now) {
+		newTime = newTime.plusDays(1)
+	}
+
+	newTime.withSecond(0)
+]
+
 // NOTE: Commands taken from TelemetryHelper.h
 var String fileName = "clcontroller.rules"
 var String controlChannel = "clcontroller/control"
 var String jsonString = ""
 var String cmd = ""
+var Timer timerAlarmOn = null
+var Timer timerAlarmOff = null
 val actionsBroker = getActions("mqtt", "mqtt:broker:mosquitto")
 
 rule "Send System Command"
@@ -62,4 +76,117 @@ then
 
 	logInfo(fileName, "Publishing MQTT payload: " + jsonString)
 	actionsBroker.publishMQTT(controlChannel, jsonString)
+end
+
+rule "On Time"
+when
+	Item CLControllerAlarmOnTimeHour changed or Item CLControllerAlarmOnTimeMinute changed
+then
+	val settingsOffOrInvalid = (CLControllerAlarmOnTimeHour === NULL
+		|| CLControllerAlarmOnTimeHour.state === NULL
+		|| CLControllerAlarmOnTimeMinute === NULL
+		|| CLControllerAlarmOnTimeMinute.state === NULL)
+
+	if (settingsOffOrInvalid && timerAlarmOn !== null) {
+		logInfo(fileName, "On time alarm cancelled.")
+		timerAlarmOn.cancel()
+		timerAlarmOn = null
+	}
+
+	if (settingsOffOrInvalid) {
+		logInfo(fileName, "On time: no alarm set.")
+		return
+	}
+
+	val newHour = (CLControllerAlarmOnTimeHour.state as DecimalType).intValue
+	val newMinute = (CLControllerAlarmOnTimeMinute.state as DecimalType).intValue
+
+	var newZonedDateTime = ZonedDateTime.now
+	newZonedDateTime = newZonedDateTime.withHour(newHour)
+	newZonedDateTime = newZonedDateTime.withMinute(newMinute)
+
+	val newTime = getNextAlarm.apply(newZonedDateTime)
+	logInfo(fileName, "On time: " + newTime.toString())
+
+	val epoch = newTime.toInstant().toEpochMilli()
+	if (timerAlarmOn !== null) {
+		logInfo(fileName, "Rescheduling on time alarm.")
+		timerAlarmOn.reschedule(new DateTime(epoch))
+	}
+	else {
+		logInfo(fileName, "New on time alarm: " + newTime.toString())
+		timerAlarmOn = createTimer(new DateTime(epoch), [ |
+			if (CLControllerPlayerControl.state !== ON) {
+				CLControllerPlayerControl.postUpdate(ON)
+			}
+			
+			val nextTime = ZonedDateTime.now.plusDays(1)
+			val newRescheduleTime = getNextAlarm.apply(nextTime)
+			val innerEpoch = newRescheduleTime.toInstant().toEpochMilli()
+			
+			logInfo(fileName, "On timer fired. Alarm rescheduled: " + newRescheduleTime.toString())
+			timerAlarmOn.reschedule(new DateTime(innerEpoch))
+		])
+	}
+end
+
+rule "Off Time"
+when
+	Item CLControllerAlarmOffTimeHour changed or Item CLControllerAlarmOffTimeMinute changed
+then
+	val settingsOffOrInvalid = (CLControllerAlarmOffTimeHour === NULL
+		|| CLControllerAlarmOffTimeHour.state === NULL
+		|| CLControllerAlarmOffTimeMinute === NULL
+		|| CLControllerAlarmOffTimeMinute.state === NULL)
+
+	if (settingsOffOrInvalid && timerAlarmOff !== null) {
+		logInfo(fileName, "Off time alarm cancelled.")
+		timerAlarmOff.cancel()
+		timerAlarmOff = null
+	}
+
+	if (settingsOffOrInvalid) {
+		logInfo(fileName, "Off time: no alarm set.")
+		return
+	}
+
+	val newHour = (CLControllerAlarmOffTimeHour.state as DecimalType).intValue
+	val newMinute = (CLControllerAlarmOffTimeMinute.state as DecimalType).intValue
+
+	var newZonedDateTime = ZonedDateTime.now
+	newZonedDateTime = newZonedDateTime.withHour(newHour)
+	newZonedDateTime = newZonedDateTime.withMinute(newMinute)
+
+	val newTime = getNextAlarm.apply(newZonedDateTime)
+	logInfo(fileName, "Off time: " + newTime.toString())
+
+	val epoch = newTime.toInstant().toEpochMilli()
+	if (timerAlarmOff !== null) {
+		logInfo(fileName, "Rescheduling off time alarm.")
+		timerAlarmOff.reschedule(new DateTime(epoch))
+	}
+	else {
+		logInfo(fileName, "New off time alarm: " + newTime.toString())
+		timerAlarmOff = createTimer(new DateTime(epoch), [ |
+			// When we shut the system all the way off, we start by stopping playsheet execution.
+			// Unfortunately, that means the lights remain in whatever state they were in when execution stopped.
+			// So we then switch on lights on to get them all in a a known good state, then switch them all off.
+			// We use 1 second delays between commands to allow enough time for the MQTT commands to be received
+			// and processed by the controller.
+			if (CLControllerPlayerControl.state !== OFF) {
+				CLControllerPlayerControl.postUpdate(OFF)
+				Thread::sleep(1000)
+				CLControllerAllSwitch.postUpdate(ON)
+				Thread::sleep(1000)
+				CLControllerAllSwitch.postUpdate(OFF)
+			}
+			
+			val nextTime = ZonedDateTime.now.plusDays(1)
+			val newRescheduleTime = getNextAlarm.apply(nextTime)
+			val innerEpoch = newRescheduleTime.toInstant().toEpochMilli()
+			
+			logInfo(fileName, "Off timer fired. Alarm rescheduled: " + newRescheduleTime.toString())
+			timerAlarmOff.reschedule(new DateTime(innerEpoch))
+		])
+	}
 end

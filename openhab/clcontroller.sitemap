@@ -18,4 +18,14 @@ sitemap clcontroller label="CLController" {
 		Text item=CLControllerPlayer label="Playing Sequence: "
 		Switch item=CLControllerAllSwitch
 	}
+
+	Frame label="On Time" {
+		Setpoint item=CLControllerAlarmOnTimeHour label="Hour" minValue=0 maxValue=23 step=1
+		Setpoint item=CLControllerAlarmOnTimeMinute label="Minute" minValue=0 maxValue=55 step=5
+	}
+
+	Frame label="Off Time" {
+		Setpoint item=CLControllerAlarmOffTimeHour label="Hour" minValue=0 maxValue=23 step=1
+		Setpoint item=CLControllerAlarmOffTimeMinute label="Minute" minValue=0 maxValue=55 step=5
+	}
 }
