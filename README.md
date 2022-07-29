@@ -47,6 +47,10 @@ The following is an example of the playsheet schema:
 - lsState = The state to set "on" or "off".
 - delayMs = The delay in milliseconds before transitioning to the next state.
 
+## IMPORTANT NOTE:
+
+The size of the playsheet you can load will be limited to the amount of RAM available at runtime. If your playsheet (sequence file) is too large, it will fail to load when the controller boots and will report this condition to the serial console. In a future firmware release, the controller will also indicate this as it's status so it can be seen in the status payload published to MQTT and/or indicated using a flashing "RUN" LED or something like that.
+
 ## Architecture
 
 CLController currently uses an ESP8266 MCU at it's heart. Unfortunately, the ESP8266 does not have a large number of GPIO pins. So to control the number of relays we need to, the main board (and the I/O expansion board) includes an MCP23017 2 port (8 GPIOs per port) I2C I/O expander paired with (2) ULN2803 Darlington arrays (each provides 8 outputs). The ULN2803s act as relay drivers. Thus allowing us to control up to 16 relays per expander. You can have a maximum of (8) MCP23017 chips on the I2C bus at a time, allowing for a grand total of 128 possible relays per CLController.  You can, of course, set up multiple CLController boards on your network allowing for even more control, but currently, the CLController boards do not communicate with each other and have no way of sharing playsheets. That being said.... if you need to control more than 128 strings of lights on one controller... you have a very impressive setup and an even more impressive utility bill. It's possible that you could break up the sequences across multiple playsheets and send each sheet to each CLController involved OTA, then send the run command to all the controllers over MQTT.  There might be timing issues depending on how long it takes each controller to recieve the command and begin executing though, but something to consider.

@@ -8,8 +8,8 @@ String CLControllerSheetName "Executing sheet: [%s]" { channel="mqtt:topic:mosqu
 Switch CLControllerPlayerControl "Play/Pause Sheet" <slider>
 Switch CLControllerAllSwitch "All Lights" <slider>
 
-Number CLControllerAlarmOnTimeHour "On Time Hour [%s]"
-Number CLControllerAlarmOnTimeMinute "On Time Minute [%s]"
+Number CLControllerAlarmOnTimeHour "On Time Hour [%s]" <time>
+Number CLControllerAlarmOnTimeMinute "On Time Minute [%s]" <time>
 
-Number CLControllerAlarmOffTimeHour "Off Time Hour [%s]"
-Number CLControllerAlarmOffTimeMinute "Off Time Minute [%s]"
+Number CLControllerAlarmOffTimeHour "Off Time Hour [%s]" <time>
+Number CLControllerAlarmOffTimeMinute "Off Time Minute [%s]" <time>

@@ -1,5 +1,5 @@
 /**
- * CLController v1.0
+ * CLController v1.1
  * Author:
  *  Cyrus Brunner
  * 
@@ -20,7 +20,7 @@
 // 12/2/2020 - There is no way to do #4 without adding additional circuitry to the relay module and at least
 // one I/O per module for sense.  This can be done by keeping the original design but removing one relay per
 // module and using that I/O as an input tied to VSS via a resistor (5.6K ?).  The MCP23017 does not have any
-// analog pins, so we can't do an analog read to get resistance. We'd can only look for low/high. That being said,
+// analog pins, so we can't do an analog read to get resistance. We can only look for low/high. That being said,
 // the firmware currently (unreliably) does this by checking to see if the pin on the MCP23017 is LOW after INIT
 // (indicating the pin is not floating, the default state).
 
@@ -46,7 +46,7 @@
 #endif
 #include "Playsheet.h"
 
-#define FIRMWARE_VERSION "1.0"
+#define FIRMWARE_VERSION "1.1"
 
 // This firmware provides backward compatibility with the original (Model 1)
 // CLController board which just consisted of an Adafruit Huzzah ESP8266 and
@@ -64,6 +64,7 @@
 #define I2C_ADDRESS_OFFSET 32
 #define PIN_WIFI_LED 16
 #define PIN_RUN_LED 14
+#define PIN_BUS_ENABLE 12
 #endif
 
 #ifdef MODEL_1
@@ -118,19 +119,23 @@ volatile SystemState sysState = SystemState::BOOTING;
  * manually to account for DST when needed.
  */
 void onSyncClock() {
+    wifiLED.on();
     configTime(config.clockTimezone * 3600, 0, "pool.ntp.org", "time.nist.gov");
 
     Serial.print("INIT: Waiting for NTP time sync...");
     delay(500);
     while (!time(nullptr)) {
+        wifiLED.off();
         ESPCrashMonitor.iAmAlive();
         Serial.print(F("."));
         delay(500);
+        wifiLED.on();
     }
 
     time_t now = time(nullptr);
     struct tm *timeinfo = localtime(&now);
     
+    wifiLED.off();
     Serial.println(F(" DONE"));
     Serial.print(F("INFO: Current time: "));
     Serial.println(asctime(timeinfo));
@@ -212,7 +217,19 @@ void getAvailableNetworks() {
     Serial.println(F("----------------------------------"));
 }
 
+/**
+ * @brief Resets the MCP23017 I2C GPIO expander.
+ */
+void busReset() {
+    Serial.println(F("WARN: Performing bus reset ..."));
+    digitalWrite(PIN_BUS_ENABLE, LOW);
+    delay(500);
+    digitalWrite(PIN_BUS_ENABLE, HIGH);
+    delay(500);
+}
+
 void reboot() {
+    busReset();
     Serial.println(F("INFO: Rebooting..."));
     Serial.flush();
     delay(1000);
@@ -473,7 +490,16 @@ void loadSequenceSheet() {
 
     // Do we have enough free contiguous memory to load the file?
     size_t size = sequenceFile.size();
+    #ifdef DEBUG
+        Serial.println();
+        Serial.print(F("DEBUG: Playsheet file size: "));
+        Serial.println(size);
+    #endif
     uint16_t freeMem = ESP.getMaxFreeBlockSize() - 512;
+    #ifdef DEBUG
+        Serial.print(F("DEBUG: Free memory before load: "));
+        Serial.println(freeMem);
+    #endif
     if (size > freeMem) {
         Serial.println(F("FAIL"));
         Serial.print(F("ERROR: Not enough free memory to load document. Size = "));
@@ -547,6 +573,11 @@ void loadSequenceSheet() {
     }
 
     doc.clear();
+    #ifdef DEBUG
+        freeMem = ESP.getMaxFreeBlockSize() - 512;
+        Serial.print(F("DEBUG: Free memory after load: "));
+        Serial.println(freeMem);
+    #endif
     Serial.println(F("DONE"));
 }
 
@@ -620,6 +651,7 @@ void playSequenceSheet() {
 
 bool reconnectMqttClient() {
     if (!mqttClient.connected()) {
+        wifiLED.on();
         Serial.print(F("INFO: Attempting to establish MQTT connection to "));
         Serial.print(config.mqttBroker);
         Serial.print(F(" on port "));
@@ -648,6 +680,8 @@ bool reconnectMqttClient() {
             Serial.println(failReason);
             return false;
         }
+
+        wifiLED.off();
     }
 
     return true;
@@ -1089,6 +1123,13 @@ void initSerial() {
 #ifndef MODEL_1
 void initComBus() {
     Serial.println(F("INIT: Initializing communication bus ..."));
+
+    // Turn on the MCP23017.
+    pinMode(PIN_BUS_ENABLE, OUTPUT);
+    digitalWrite(PIN_BUS_ENABLE, HIGH);
+    delay(500);
+
+    // Init I2C bus and start scanning for devices.
     Wire.begin();
     scanBusDevices();
     if (primaryExpanderFound) {
@@ -1162,7 +1203,7 @@ void initRelayModules() {
 
     RelayModule moduleB(&primaryBus, RelayModulePort::PORTB);
     if (moduleB.detect()) {
-        Serial.println(F("INFO: Detected relay module 1 (port A, bus 0)"));
+        Serial.println(F("INFO: Detected relay module 1 (port B, bus 0)"));
         moduleB.init();
         relayModules.push_back(moduleB);
     }
