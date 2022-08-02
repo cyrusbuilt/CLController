@@ -29,7 +29,7 @@
 #include <time.h>
 #include <vector>
 #include "ArduinoJson.h"
-#include "ESPCrashMonitor-master/ESPCrashMonitor.h"
+#include "ESPCrashMonitor.h"
 #include "Console.h"
 #include "LED.h"
 #include "PubSubClient.h"
