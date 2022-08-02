@@ -4,7 +4,6 @@
 # Don't need this currently.
 test/
 lib/
-include/
 
 # macOS garbage
 ._DS_Store
