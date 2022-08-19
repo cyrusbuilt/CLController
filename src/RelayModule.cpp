@@ -76,6 +76,12 @@ uint8_t RelayModule::getRelayAddress(RelaySelect relay) {
 }
 
 bool RelayModule::detect() {
+	// TODO This logic is flawed. The I/O pins are initialized low by default.
+	// TODO Therefore this doesn't really do anything. Additionally, even if
+	// TODO we changed it to drive it HIGH and then read it, what does that
+	// TODO prove? Only that we can drive the pin high, not that anything is
+	// TODO actually attached to it. Given the hardware design, this probably
+	// isn't actually possible.
 	uint8_t address = this->getRelayAddress(RelaySelect::RELAY1);
 	this->_busController->pinMode(address, INPUT);
 	this->_busController->pullUp(address, LOW);

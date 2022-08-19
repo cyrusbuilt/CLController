@@ -624,6 +624,8 @@ void playSequenceSheet() {
         #endif
         for (auto state = seq->states.begin(); state != seq->states.end(); state++) {
             #ifdef DEBUG
+            // TODO Assuming we can get detection working correctly,
+            // TODO we should probably skip any modules that don't actually exist.
             Serial.print(F("DEBUG: State modIdx = "));
             Serial.print(state->moduleIndex);
             Serial.print(F(", lsIdx = "));
@@ -1325,6 +1327,10 @@ void handleMqttConfigCommand(String newBroker, int newPort, String newUsername, 
 
     initMQTT();
     Serial.println();
+}
+
+void handleRunTestSequence() {
+
 }
 
 void initConsole() {

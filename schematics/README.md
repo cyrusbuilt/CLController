@@ -1,13 +1,13 @@
 # CLController Schematics
 
-All files were produced using [Fritzing](https://fritzing.org/home/). The following is a list of files and what they are:
+All files were produced using [EasyEDA](https://easyeda.com/). The following is a list of files and what they are:
 
-- CLController/CLController_bb.pdf - A PDF of the bread board view.
-- CLController/CLController_bom.html - The bill of materials in HTML format.
-- CLController/CLController_pcb.pdf - A PDF version of the PCB view.
-- CLController/CLController_schem.pdf - A PDF version of the schematic view.
-- CLController/CLController.fzz - The original Fritzing CAD file.
-- CLController/gerber - Subdirectory containing the exported Gerber files useful for importing into other CAD programs or for sending to fab houses that do not support Fritzing files.
+- CLController/COM_CLController.csv - The bill of materials in CSV format.
+- CLController/PCB_CLController.pdf - A PDF version of the PCB view.
+- CLController/SCH_CLController.pdf - A PDF version of the schematic view.
+- CLController/PCB_CLController.json - The original EasyEDA CAD file of the schematic.
+- CLController/SCH_CLController.json - The original EasyEDA CAD file of the PCB.
+- CLController/gerber - Subdirectory containing the exported Gerber files useful for importing into other CAD programs or for sending to fab houses that do not support EasyEDA files.
 - ExpansionModule/* - All of the same things as above, but for the I/O expansion module.
 - RelayModule/* - All of the same things as above, but for the relay module.
 
