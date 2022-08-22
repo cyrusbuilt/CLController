@@ -2,6 +2,8 @@
 
 ESP8266-based Christmas Lights Controller (Arduino)
 
+![Build Status](https://github.com/cyrusbuilt/CLController/actions/workflows/ci.yml/badge.svg)
+
 The code in this repository represents the firmware for the CLController main module, as well as some components for integrating with [OpenHAB3](https://openhab.org). CLController is a [PlatformIO](https://platformio.org) project and is meant to essentially a multi-module outlet controller, with the idea being that you can control multiple string of traditional Christmas light strings (this is not a pixel controller). Given the hardware design however, it is possible to use this device for multiple applications.  I can be monitored and controlled via [MQTT](https://mqtt.org).  Since there is an [ESP8266](https://www.adafruit.com/product/2471) at the heart of it, that means it is WiFi-enabled and is capable of OTA (Over-the-Air) firmware and configuration updates.
 
 ## Theory of Operation
