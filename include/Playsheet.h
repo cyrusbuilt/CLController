@@ -3,64 +3,121 @@
 
 #include <functional>
 #include <vector>
-#ifdef MODEL_1
-#include "Relay.h"
-#else
 #include "RelayModule.h"
-#endif
 
 using namespace std;
 
-class SequenceState {
+/**
+ * @brief Represents an addressable string of lights.
+ */
+class LightString {
 public:
-    #ifdef MODEL_1
-    SequenceState(uint8_t modIdx, RelayState lsState, uint8_t lsIndex) {
-        moduleIndex = modIdx;
-        lightStringState = lsState;
-        lightStringIndex = lsIndex;
-    }
-    #else
-    SequenceState(uint8_t modIdx, ModuleRelayState lsState, RelaySelect lsIndex) {
-        moduleIndex = modIdx;
-        lightStringState = lsState;
-        lightStringIndex = lsIndex;
-    };
-    #endif
-
-    SequenceState() {
-        moduleIndex = 0;
-        #ifdef MODEL_1
-        lightStringState = RelayOpen;
-        lightStringIndex = 0;
-        #else
-        lightStringState = ModuleRelayState::OPEN;
-        lightStringIndex = RelaySelect::RELAY1;
-        #endif
+    /**
+     * @brief Default ctor.
+     */
+    LightString() {
+        modIdx = 0;
+        lsIdx = RelaySelect::RELAY1;
     }
 
-    uint8_t moduleIndex;
-    #ifdef MODEL_1
-    RelayState lightStringState;
-    uint8_t lightStringIndex;
-    #else
-    ModuleRelayState lightStringState;
-    RelaySelect lightStringIndex;
-    #endif
+    /**
+     * @brief Construct a new LightString object with module index and light
+     * string index.
+     * 
+     * @param modIdx The zero-based index of the relay module. 
+     * @param lsIdx The 1-based index of the light string.
+     */
+    LightString(uint8_t modIdx, RelaySelect lsIdx) {
+        this->modIdx = modIdx;
+        this->lsIdx = lsIdx;
+    }
+
+    /**
+     * @brief The zero-based index of the module the light string is attached to.
+     */
+    uint8_t modIdx;
+
+    /**
+     * @brief The one-based index of the light string.
+     */
+    RelaySelect lsIdx;
 };
 
-class Sequence {
+/**
+ * @brief Represents a "note" to play. In this context, a "note" is defined
+ * by one or more light strings along with the period the note should last,
+ * and a letter representing the note (ie. 'C' or 'G'). The *special* note
+ * 'R' indicates a rest period.
+ */
+class Note {
 public:
-    Sequence() { delay = 0; }
-    unsigned long delay;
-    vector<SequenceState> states;
+    /**
+     * @brief A letter representing the note.
+     */
+    char note;
+
+    /**
+     * @brief The note period.
+     */
+    int period;
+
+    /**
+     * @brief A vector of one or more light strings.
+     */
+    vector<LightString> lights;
 };
 
+/**
+ * @brief Represents a "play sheet", which is a light sequence similar to a
+ * sheet of music that defines the tempo, pause, beat, rest count, and a
+ * collection of note definitions, along with a "melody" which defines the
+ * order in which "notes" should be played. This abstraction essentially
+ * treats the strings of lights as if they combined to form a musical
+ * instrument that can be played. Instead of producing sound, the lights
+ * flash in time with the melody of the song.
+ */
 class PlaysheetClass {
 public:
+    /**
+     * @brief The name of the play sheet or "song".
+     */
     const char* sheetName;
-    std::vector<Sequence> sequences;
+
+    /**
+     * @brief The tempo in milliseconds.
+     */
+    int tempo;
+
+    /**
+     * @brief The pause in milliseconds.
+     */
+    int pause;
+
+    /**
+     * @brief The beat.
+     */
+    int beat;
+
+    /**
+     * @brief The rest count.
+     */
+    int restCount;
+
+    /**
+     * @brief A vector of "notes".
+     */
+    vector<Note> notes;
+
+    /**
+     * @brief The "melody" represented by a vector of chars, which defines
+     * the order in which "notes" should be "played".
+     */
+    vector<char> melody;
 };
 
+/**
+ * @brief Global playsheet instance.
+ */
 extern PlaysheetClass Playsheet;
 
 #endif

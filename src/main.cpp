@@ -1,15 +1,37 @@
 /**
- * CLController v1.1
- * Author:
- *  Cyrus Brunner
+ * @file main.cpp
+ * @author Cyrus Brunner (cyrusbuilt at gmail dot com)
+ * @brief Firmware for CLController, an ESP8266-based (Arduino) modular
+ * Christmas lights controller.
+ * Features:
+ * 1) Modular hardware design. Can be tailored to meet your needs.
+ * 2) WiFi-enabled. Allows monitoring and control over MQTT.
+ * 3) Optional OpenHAB integration.
+ * 4) Local serial console for control and configuration.
+ * 5) OTA (Over-The-Air) firmware and configuration update support.
+ * 6) Configurable sequence via "Playsheets", which is a JSON-formated
+ * file containing a description of the sequence in terms of a "song",
+ * as this device is intended flash the lights according to a melody.
+ * 7) Can pause or overide a sequence and simply turn all the lights
+ * on or off.
  * 
  * I/O Expansion:
  * 
  * The main controller board has an MCP23017 which provides 16 digital
- * GPIOs and is located at PRIMARY_I2C_ADDRESS. This is what controls the 8 outputs
- * on each of the 2 ports on the main board.  However, it is possible to expand
- * this even further by adding additional MCP23017s (7 additional max) on the I2C bus.
- * As such, the main board provides a 2-pin I2C header that additional expanders to connect to.
+ * GPIOs and is located at PRIMARY_I2C_ADDRESS. This is what controls the 8
+ * outputs (4 per port) split accross the 2 ports on the main board.  However,
+ * it is possible to expand this even further by adding expansion modules
+ * (7 additional max) on the I2C bus. As such, the main board provides a 2-pin
+ * I2C header that additional expanders to connect to.
+ * 
+ * The main board allows up to 2 relay modules to be attached. If you need more
+ * than that, you can attach an expansion module and then up to 2 more relay
+ * modules per expansion module.
+ * @version 1.2
+ * @date 2022-10-25
+ * 
+ * @copyright Copyright (c) 2022
+ * 
  */
 
 // TODO Possible design changes:
@@ -24,58 +46,35 @@
 // the firmware currently (unreliably) does this by checking to see if the pin on the MCP23017 is LOW after INIT
 // (indicating the pin is not floating, the default state).
 
+#ifndef ESP8266
+    #error This firmware is only compatible with ESP8266 controllers.
+#endif
+
 #include <Arduino.h>
 #include <FS.h>
 #include <time.h>
 #include <vector>
+#include <Wire.h>
+#include "Adafruit_MCP23017.h"
 #include "ArduinoJson.h"
-#include "ESPCrashMonitor.h"
 #include "Console.h"
+#include "ESPCrashMonitor.h"
 #include "LED.h"
 #include "PubSubClient.h"
 #include "ResetManager.h"
 #include "TaskScheduler.h"
 #include "TelemetryHelper.h"
 #include "config.h"
-#ifdef MODEL_1
-#include "Relay.h"
-#else
-#include <Wire.h>
-#include "Adafruit_MCP23017.h"
 #include "RelayModule.h"
-#endif
 #include "Playsheet.h"
 
-#define FIRMWARE_VERSION "1.1"
+#define FIRMWARE_VERSION "1.2"
 
-// This firmware provides backward compatibility with the original (Model 1)
-// CLController board which just consisted of an Adafruit Huzzah ESP8266 and
-// 5 Adafruit PowerRelay FeatherWings. By uncommenting the MODEL_1 define in
-// config.h, this firmware can be configured for the old controller board.
-#ifdef MODEL_1
-#define PIN_RELAY_5 12
-#define PIN_RELAY_4 13
-#define PIN_RELAY_3 14
-#define PIN_RELAY_2 16
-#define PIN_RELAY_1 15
-#define PIN_WIFI_LED 2
-#else
 #define PRIMARY_I2C_ADDRESS 0
 #define I2C_ADDRESS_OFFSET 32
 #define PIN_WIFI_LED 16
 #define PIN_RUN_LED 14
 #define PIN_BUS_ENABLE 12
-#endif
-
-#ifdef MODEL_1
-enum class RelaySelect : uint8_t {
-    RELAY1 = 1,
-    RELAY2 = 2,
-    RELAY3 = 3,
-    RELAY4 = 4,
-    RELAY5 = 5
-};
-#endif
 
 using namespace std;
 
@@ -97,16 +96,12 @@ Task tCheckWiFi(CHECK_WIFI_INTERVAL, TASK_FOREVER, &onCheckWifi);
 Task tCheckMqtt(CHECK_MQTT_INTERVAL, TASK_FOREVER, &onCheckMqtt);
 Task tClockSync(CLOCK_SYNC_INTERVAL, TASK_FOREVER, &onSyncClock);
 Scheduler taskMan;
-#ifdef MODEL_1
-vector<Relay> relays;
-#else
 bool primaryExpanderFound = false;
 vector<byte> devicesFound;
 vector<Adafruit_MCP23017> additionalBusses;
 vector<RelayModule> relayModules;
 Adafruit_MCP23017 primaryBus;
 LED runLED(PIN_RUN_LED, NULL);
-#endif
 LED wifiLED(PIN_WIFI_LED, NULL);
 config_t config;
 bool filesystemMounted = false;
@@ -114,7 +109,16 @@ volatile bool terminateSequence = false;
 volatile SystemState sysState = SystemState::BOOTING;
 
 /**
- * Synchronize the local system clock via NTP. Note: This does not take DST
+ * @brief Get the available free memory.
+ * 
+ * @return uint16_t The available free memory in bytes.
+ */
+uint16_t getFreeMem() {
+    return ESP.getMaxFreeBlockSize() - 512;
+}
+
+/**
+ * @brief Synchronize the local system clock via NTP. Note: This does not take DST
  * into account. Currently, you will have to adjust the CLOCK_TIMEZONE define
  * manually to account for DST when needed.
  */
@@ -141,6 +145,10 @@ void onSyncClock() {
     Serial.println(asctime(timeinfo));
 }
 
+/**
+ * @brief Publishes the current system state to the configured MQTT status
+ * channel.
+ */
 void publishSystemState() {
     if (mqttClient.connected()) {
         wifiLED.on();
@@ -166,22 +174,20 @@ void publishSystemState() {
 }
 
 /**
- * Resume normal operation. This will resume any suspended tasks.
+ * @brief Resume normal operation. This will resume any suspended tasks.
  */
 void resumeNormal() {
     Serial.println(F("INFO: Resuming normal operation..."));
     taskMan.enableAll();
     wifiLED.off();
-    #ifndef MODEL_1
     runLED.off();
-    #endif
     sysState = SystemState::NORMAL;
     terminateSequence = false;
     publishSystemState();
 }
 
 /**
- * Prints network information details to the serial console.
+ * @brief Prints network information details to the serial console.
  */
 void printNetworkInfo() {
     Serial.print(F("INFO: Local IP: "));
@@ -200,7 +206,7 @@ void printNetworkInfo() {
 }
 
 /**
- * Scan for available networks and dump each discovered network to the console.
+ * @brief Scan for available networks and dump each discovered network to the console.
  */
 void getAvailableNetworks() {
     ESPCrashMonitor.defer();
@@ -228,6 +234,9 @@ void busReset() {
     delay(500);
 }
 
+/**
+ * @brief Performs a soft-reboot of the firmware.
+ */
 void reboot() {
     busReset();
     Serial.println(F("INFO: Rebooting..."));
@@ -236,6 +245,9 @@ void reboot() {
     ResetManager.softReset();
 }
 
+/**
+ * @brief Saves the current in-memory configuration to local storage.
+ */
 void saveConfiguration() {
     Serial.print(F("INFO: Saving configuration to "));
     Serial.print(CONFIG_FILE_PATH);
@@ -281,12 +293,21 @@ void saveConfiguration() {
     Serial.println(F("DONE"));
 }
 
+/**
+ * @brief Helper method for display configuration warning messages
+ * to the console.
+ * 
+ * @param message The message to display.
+ */
 void printWarningAndContinue(const __FlashStringHelper *message) {
     Serial.println();
     Serial.println(message);
     Serial.print(F("INFO: Continuing... "));
 }
 
+/**
+ * @brief Sets the in-memory confiruation values to their defaults.
+ */
 void setConfigurationDefaults() {
     String chipId = String(ESP.getChipId(), HEX);
     String defHostname = String(DEVICE_NAME) + "_" + chipId;
@@ -314,6 +335,9 @@ void setConfigurationDefaults() {
     #endif
 }
 
+/**
+ * @brief Loads the configuration settings from local storage.
+ */
 void loadConfiguration() {
     memset(&config, 0, sizeof(config));
 
@@ -341,7 +365,7 @@ void loadConfiguration() {
     }
 
     size_t size = configFile.size();
-    uint16_t freeMem = ESP.getMaxFreeBlockSize() - 512;
+    uint16_t freeMem = getFreeMem();
     if (size > freeMem) {
         Serial.println(F("FAIL"));
         Serial.print(F("ERROR: Not enough free memory to load document. Size = "));
@@ -424,6 +448,12 @@ void loadConfiguration() {
     Serial.println(F("DONE"));
 }
 
+/**
+ * @brief Performs a factory-restore. This essentially just wipes the
+ * configuration file from local storage and reboots. When the system
+ * starts back up, it will detect that no config file is present and
+ * generate a new one populated with default values.
+ */
 void doFactoryRestore() {
     Serial.println();
     Serial.println(F("Are you sure you wish to restore to factory default? (Y/n)"));
@@ -461,6 +491,10 @@ void doFactoryRestore() {
     Serial.println();
 }
 
+/**
+ * @brief Loads the sequence sheet (aka. "Play Sheet") into memory so that
+ * it can be executed.
+ */
 void loadSequenceSheet() {
     Serial.print(F("INFO: Loading sequence file: "));
     Serial.print(PLAYSHEET_FILE_PATH);
@@ -495,7 +529,7 @@ void loadSequenceSheet() {
         Serial.print(F("DEBUG: Playsheet file size: "));
         Serial.println(size);
     #endif
-    uint16_t freeMem = ESP.getMaxFreeBlockSize() - 512;
+    uint16_t freeMem = getFreeMem();
     #ifdef DEBUG
         Serial.print(F("DEBUG: Free memory before load: "));
         Serial.println(freeMem);
@@ -525,62 +559,108 @@ void loadSequenceSheet() {
     
     config.sheetName = doc["name"].as<String>();
     Playsheet.sheetName = config.sheetName.c_str();
-    
-    #ifdef MODEL_1
-    RelayState newState = RelayOpen;
-    const uint8_t modIdx = 0;
-    #else
-    uint8_t modIdx = 0;
-    ModuleRelayState newState = ModuleRelayState::OPEN;
-    #endif
-    RelaySelect relay = RelaySelect::RELAY1;
+    Playsheet.tempo = doc["temp"].as<int>();
+    Playsheet.pause = doc["pause"].as<int>();
+    Playsheet.beat = doc["beat"].as<int>();
+    Playsheet.restCount = doc["restCount"].as<int>();
 
-    JsonArray sequences = doc["seq"].as<JsonArray>();
-    for (auto sequence : sequences) {
-        Sequence seq;
-        JsonArray states = sequence["states"];
-        for (auto state : states) {
-            // We don't care about the module index if we're running on a Model 1 controller.
-            #ifndef MODEL_1
-            modIdx = state["modIdx"].as<uint8_t>();
-            #endif
-            if (strcmp(state["lsState"].as<const char*>(), "on") == 0) {
-                #ifdef MODEL_1
-                newState = RelayClosed;
-                #else
-                newState = ModuleRelayState::CLOSED;
-                #endif
-            }
-            else {
-                #ifdef MODEL_1
-                newState = RelayOpen;
-                #else
-                newState = ModuleRelayState::OPEN;
-                #endif
-            }
+    JsonArray notes = doc["notes"].as<JsonArray>();
+    for (auto currentNote : notes) {
+        Note note;
+        note.note = currentNote["note"].as<char>();
+        note.period = currentNote["period"].as<int>();
 
-            relay = (RelaySelect)state["lsIdx"].as<uint8_t>();
-            #ifdef MODEL_1
-            SequenceState theState(modIdx, newState, (uint8_t)relay);
-            #else
-            SequenceState theState(modIdx, newState, relay);
-            #endif
-            seq.states.push_back(theState);
+        JsonArray lights = currentNote["lights"].as<JsonArray>();
+        for (auto currentLight : lights) {
+            LightString light;
+            light.modIdx = currentLight["modIdx"].as<uint8_t>();
+            light.lsIdx = (RelaySelect)currentLight["lsIdx"].as<uint8_t>();
+            note.lights.push_back(light);
         }
 
-        seq.delay = sequence["delayMs"].as<unsigned long>();
-        Playsheet.sequences.push_back(seq);
+        Playsheet.notes.push_back(note);
+    }
+
+    JsonArray sequence = doc["melody"].as<JsonArray>();
+    for (auto seq : sequence) {
+        Playsheet.melody.push_back(seq.as<char>());
     }
 
     doc.clear();
     #ifdef DEBUG
-        freeMem = ESP.getMaxFreeBlockSize() - 512;
+        freeMem = getFreeMem();
         Serial.print(F("DEBUG: Free memory after load: "));
         Serial.println(freeMem);
     #endif
     Serial.println(F("DONE"));
 }
 
+/**
+ * @brief Helper function for finding a note matching the specified character
+ * so that you can get a Note object by passing in a 'C' or 'G', for example.
+ * 
+ * @param note The character representing the note to find.
+ * @return Note A pointer to the matching note if found; Otherwise, NULL.
+ */
+Note* findNote(char note) {
+    size_t index = 0;
+    Note* match = NULL;
+    for (auto currentNote = Playsheet.notes.begin(); currentNote != Playsheet.notes.end(); currentNote++) {
+        if (currentNote->note == note) {
+            match = &Playsheet.notes.at(index);
+            break;
+        }
+
+        index++;
+    }
+
+    return match;
+}
+
+/**
+ * @brief Helper method to "play" a note. This will flash all light strings
+ * assigned to the note or rest for the specified duration. 
+ * 
+ * @param note The note to "play".
+ * @param duration How long to play the note.
+ */
+void playNote(Note* note, const int duration) {
+    if (note == NULL) {
+        return;
+    }
+
+    long elapsedTime = 0;
+    if (note->period > 0) {
+        while (elapsedTime < duration) {
+            // TODO Should we opLoop and term check in here?
+            for (LightString lightString : note->lights) {
+                relayModules.at(lightString.modIdx).open(lightString.lsIdx);
+            }
+
+            delayMicroseconds(note->period / 2);
+
+            for (LightString lightString : note->lights) {
+                relayModules.at(lightString.modIdx).close(lightString.lsIdx);
+            }
+
+            delayMicroseconds(note->period / 2);
+            elapsedTime += note->period;
+        }
+    }
+    else {
+        for (int j = 0; j < Playsheet.restCount; j++) {
+            // TODO Wait a minute... can't I just do duration * restCount and nix the loop?!?!
+            // TODO Or... should we opLoop and term check in here before every delay?
+            delayMicroseconds(duration);
+        }
+    }
+}
+
+/**
+ * @brief Executes the "play sheet" until terminated. Since this method is
+ * called from the main loop, this will run repeatedly until terminateSequence
+ * is true.
+ */
 void playSequenceSheet() {
     if (terminateSequence) {
         return;
@@ -589,16 +669,31 @@ void playSequenceSheet() {
     Serial.print(F("INFO: Executing sequence sheet: "));
     Serial.println(Playsheet.sheetName);
 
-    size_t count = Playsheet.sequences.size();
-    Serial.print(F("INFO: Sequence count: "));
+    size_t count = Playsheet.notes.size();
+    Serial.print(F("INFO: Note count: "));
     Serial.println(count);
-    for (auto seq = Playsheet.sequences.begin(); seq != Playsheet.sequences.end(); seq++) {
-        #ifndef MODEL_1
-        if (runLED.isOff()) {
-            runLED.on();
-        }
-        #endif
+    #ifdef DEBUG
+    Serial.print(F("DEBUG: Tempo: "));
+    Serial.println(Playsheet.tempo);
+    Serial.print(F("DEBUG: Beat: "));
+    Serial.println(Playsheet.beat);
+    Serial.print(F("DEBUG: Pause: "));
+    Serial.println(Playsheet.pause);
+    Serial.print(F("DEBUG: Rest count: "));
+    Serial.println(Playsheet.restCount);
+    #endif
 
+    if (runLED.isOff()) {
+        runLED.on();
+    }
+
+    const int duration = Playsheet.beat * Playsheet.tempo;
+    #ifdef DEBUG
+    Serial.print(F("DEBUG: Duration: "));
+    Serial.println(duration);
+    #endif
+
+    for (char melodyNote : Playsheet.melody) {
         // This will introduce slight delays during sequences, but it beats blocking
         // other operations from processing and keeps the watchdog fed.
         // The ESP-32 would probably be better suited for this since we can run a
@@ -610,47 +705,30 @@ void playSequenceSheet() {
         // Each dependency would need to be evaluated to see which (if any)
         // are compatible and find replacements or write new ones from scratch.
         // I'd rather not do all that yet.
+        #ifdef DEBUG
         Serial.println(F("DEBUG: OpLoop"));
+        #endif
         operationsLoop();
         if (terminateSequence) {
             break;
         }
 
-        #ifdef DEBUG
-        Serial.print(F("DEBUG: seq delay = "));
-        Serial.print(seq->delay);
-        Serial.print(F(", state count = "));
-        Serial.println(seq->states.size());
-        #endif
-        for (auto state = seq->states.begin(); state != seq->states.end(); state++) {
-            #ifdef DEBUG
-            // TODO Assuming we can get detection working correctly,
-            // TODO we should probably skip any modules that don't actually exist.
-            Serial.print(F("DEBUG: State modIdx = "));
-            Serial.print(state->moduleIndex);
-            Serial.print(F(", lsIdx = "));
-            Serial.print((uint8_t)state->lightStringIndex);
-            Serial.print(F(", lsState = "));
-            Serial.println((uint8_t)state->lightStringState);
-            #endif
-            #ifdef MODEL_1
-            relays.at(state->lightStringIndex - 1).setState(state->lightStringState);
-            #else
-            relayModules.at(state->moduleIndex).setState(state->lightStringIndex, state->lightStringState);
-            #endif
-        }
-
-        // delay for note duration + 30%
-        delay(seq->delay * 1.30);
+        playNote(findNote(melodyNote), duration);
+        delayMicroseconds(Playsheet.pause);
     }
 
-    #ifndef MODEL_1
     runLED.off();
-    #endif
     Serial.print(F("INFO: Finished running sequence: "));
     Serial.println(Playsheet.sheetName);
 }
 
+/**
+ * @brief Maintains the connection to the MQTT broker. This will check to see
+ * if the connection was lost and then attempt to reconnect if necessary.
+ * 
+ * @return true If still connected or a reconnect was successful.
+ * @return false If not connected and a reconnect failed.
+ */
 bool reconnectMqttClient() {
     if (!mqttClient.connected()) {
         wifiLED.on();
@@ -689,6 +767,12 @@ bool reconnectMqttClient() {
     return true;
 }
 
+/**
+ * @brief Callback method executed by the tCheckMqtt task. This will check to
+ * see if the MQTT connection is still alive and attempt to reconnect if
+ * necessary. If successful, the current system state will then be published
+ * to the status topic. Failures will be reported to console.
+ */
 void onCheckMqtt() {
     Serial.println(F("INFO: Checking MQTT connections status..."));
     if (reconnectMqttClient()) {
@@ -703,16 +787,11 @@ void onCheckMqtt() {
     }
 }
 
+/**
+ * @brief Helper method to turn all relays on all connected modules on.
+ */
 void allRelaysOn() {
     uint8_t index = 0;
-    #ifdef MODEL_1
-    for (auto relayModule = relays.begin(); relayModule != relays.end(); relayModule++) {
-        Serial.print(F("INFO: Turning on relay "));
-        Serial.println(index + 1);
-        relayModule->close();
-        index++;
-    }
-    #else
     for (auto module = relayModules.begin(); module != relayModules.end(); module++) {
         Serial.print(F("INFO: Turning all relays on module at address "));
         Serial.print(index);
@@ -720,19 +799,13 @@ void allRelaysOn() {
         module->allRelaysClosed();
         index++;
     }
-    #endif
 }
 
+/**
+ * @brief Helper method to turn all relays on all connected modules off.
+ */
 void allRelaysOff() {
     uint8_t index = 0;
-    #ifdef MODEL_1
-    for (auto relayModule = relays.begin(); relayModule != relays.end(); relayModule++) {
-        Serial.print(F("INFO: Turning of relay "));
-        Serial.println(index + 1);
-        relayModule->open();
-        index++;
-    }
-    #else
     for (auto module = relayModules.begin(); module != relayModules.end(); module++) {
         Serial.print(F("INFO: Turning all relays on module at address "));
         Serial.print(index);
@@ -740,9 +813,14 @@ void allRelaysOff() {
         module->allRelaysOpen();
         index++;
     }
-    #endif
 }
 
+/**
+ * @brief Handles control requests received on the MQTT control topic, if the
+ * command is valid.
+ * 
+ * @param cmd The command to execute.
+ */
 void handleControlRequest(ControlCommand cmd) {
     if (sysState == SystemState::DISABLED && cmd != ControlCommand::ENABLE) {
         // THOU SHALT NOT PASS!!! 
@@ -792,6 +870,17 @@ void handleControlRequest(ControlCommand cmd) {
     publishSystemState();
 }
 
+/**
+ * @brief Callback method executed when a message is received on the MQTT
+ * control topic the device is subscribed to. This method will validate that
+ * the message was intended for this device and since we only subscribe to
+ * control topics, the command will be parsed from the topic and then passed
+ * to the command request handler.
+ * 
+ * @param topic The topic the message was received on.
+ * @param payload The message payload.
+ * @param length The payload length.
+ */
 void onMqttMessage(char* topic, byte* payload, unsigned int length) {
     Serial.print(F("INFO: [MQTT] Message arrived: ["));
     Serial.print(topic);
@@ -845,8 +934,8 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 }
 
 /**
- * Enter fail-safe mode. This will suspend all tasks, disable relay activation,
- * and propmpt the user for configuration.
+ * @brief Enter fail-safe mode. This will suspend all tasks, disable relay
+ * activation, and propmpt the user for configuration.
  */
 void failSafe() {
     sysState = SystemState::DISABLED;
@@ -856,15 +945,13 @@ void failSafe() {
     Serial.println();
     Serial.println(F("ERROR: Entering failsafe (config) mode..."));
     taskMan.disableAll();
-    #ifndef MODEL_1
     runLED.off();
-    #endif
     wifiLED.on();
     Console.enterCommandInterpreter();
 }
 
 /**
- * Initializes the MDNS responder (if enabled).
+ * @brief Initializes the MDNS responder (if enabled).
  */
 void initMDNS() {
     #ifdef ENABLE_MDNS
@@ -890,7 +977,7 @@ void initMDNS() {
 }
 
 /**
- * Initialize the SPIFFS filesystem.
+ * @brief Initialize the SPIFFS filesystem.
  */
 void initFilesystem() {
     Serial.print(F("INIT: Initializing SPIFFS and mounting filesystem... "));
@@ -908,7 +995,7 @@ void initFilesystem() {
 }
 
 /**
- * Initializes the MQTT client.
+ * @brief Initializes the MQTT client.
  */
 void initMQTT() {
     Serial.print(F("INIT: Initializing MQTT client... "));
@@ -922,7 +1009,8 @@ void initMQTT() {
 }
 
 /**
- * Attempt to connect to the configured WiFi network. This will break any existing connection first.
+ * @brief Attempt to connect to the configured WiFi network. This will break
+ * any existing connection first.
  */
 void connectWifi() {
     if (config.hostname) {
@@ -967,7 +1055,10 @@ void connectWifi() {
     }
 }
 
-#ifndef MODEL_1
+/**
+ * @brief Scans the I2C bus for devices, looking for expansion modules and the
+ * primary I/O expander.
+ */
 void scanBusDevices() {
     byte error;
     byte address;
@@ -1013,10 +1104,9 @@ void scanBusDevices() {
         Serial.println(F("INFO: Scan complete."));
     }
 }
-#endif
 
 /**
- * Initializes the WiFi network interface.
+ * @brief Initializes the WiFi network interface.
  */
 void initWiFi() {
     Serial.println(F("INIT: Initializing WiFi... "));
@@ -1030,7 +1120,7 @@ void initWiFi() {
 }
 
 /**
- * Initializes the OTA update listener if enabled.
+ * @brief Initializes the OTA update listener if enabled.
  */
 void initOTA() {
     #ifdef ENABLE_OTA
@@ -1094,7 +1184,7 @@ void initOTA() {
 }
 
 /**
- * Callback routine for checking WiFi connectivity.
+ * @brief Callback routine for checking WiFi connectivity.
  */
 void onCheckWifi() {
     Serial.println(F("INFO: Checking WiFi connectivity..."));
@@ -1108,6 +1198,9 @@ void onCheckWifi() {
     }
 }
 
+/**
+ * @brief Initializes the RS-232 serial port.
+ */
 void initSerial() {
     Serial.begin(BAUD_RATE);
     #ifdef DEBUG
@@ -1122,7 +1215,10 @@ void initSerial() {
     Serial.println(F(" booting ..."));
 }
 
-#ifndef MODEL_1
+/**
+ * @brief Initializes the communication bus (I2C) and starts the device
+ * detection process.
+ */
 void initComBus() {
     Serial.println(F("INIT: Initializing communication bus ..."));
 
@@ -1156,29 +1252,12 @@ void initComBus() {
 
     Serial.println(F("INIT: Comm bus initialization complete."));
 }
-#endif
 
+/**
+ * @brief Initializes any attached relay modules.
+ */
 void initRelayModules() {
     Serial.println(F("INIT: Initializing relay modules ..."));
-
-    #ifdef MODEL_1
-    const uint8_t pins[5] = {
-        PIN_RELAY_1,
-        PIN_RELAY_2,
-        PIN_RELAY_3,
-        PIN_RELAY_4,
-        PIN_RELAY_5
-    };
-
-    for (uint8_t i = 0; i < 5; i++) {
-        String name = "RELAY_" + String(i);
-        Relay newRelay(pins[i], NULL, name.c_str());
-        newRelay.init();
-        relays.push_back(newRelay);
-        Serial.print(F("INIT: Configured relay "));
-        Serial.println(name);
-    }
-    #else
     if (!primaryExpanderFound) {
         // NOTE: I actually struggle with this one. My gut says if we can't even detect
         // the onboard I/O expander, then we probably should just fail. On the other hand,
@@ -1238,36 +1317,54 @@ void initRelayModules() {
             relayModules.push_back(newModuleB);
         }
     }
-    #endif
 
     Serial.println(F("INIT: Relay module initialization complete."));
 }
 
+/**
+ * @brief Initializes onboard outputs (status LEDs).
+ */
 void initOutputs() {
     Serial.print(F("INIT: Initializing outputs ..."));
     wifiLED.init();
     wifiLED.on();
-    #ifndef MODEL_1
     runLED.init();
     runLED.on();
-    #endif
     Serial.println(F("DONE"));
 }
 
+/**
+ * @brief Handler callback to play/resume execution of the play sheet.
+ */
 void handleRunPlaysheet() {
     terminateSequence = false;
 }
 
+/**
+ * @brief Handler callback to pause/interrupt execution of the play sheet.
+ */
 void handleInterruptPlaysheet() {
     Serial.println(F("INFO: Playsheet interrupt..."));
     terminateSequence = true;
 }
 
+/**
+ * @brief Handler callback to set the new host name via the console. If the
+ * hostname is changing and MDNS is enabled, then the MDNS subsystem will be
+ * reinitialized.
+ * 
+ * @param newHostname The new hostname.
+ */
 void handleNewHostname(const char* newHostname) {
-    config.hostname = newHostname;
-    initMDNS();
+    if (config.hostname != newHostname) {
+        config.hostname = newHostname;
+        initMDNS();
+    }
 }
 
+/**
+ * @brief Handler callback to switch to DHCP mode from the console.
+ */
 void handleSwitchToDhcp() {
     if (config.useDhcp) {
         Serial.println(F("INFO: DHCP mode already set. Skipping..."));
@@ -1280,7 +1377,17 @@ void handleSwitchToDhcp() {
     }
 }
 
+/**
+ * @brief Handler callback for switching to static network config from the
+ * console.
+ * 
+ * @param newIp The new static IP to set. 
+ * @param newSm The new static subnet mask to use.
+ * @param newGw The new static gateway IP to use.
+ * @param newDns The new static DNS IP to use.
+ */
 void handleSwitchToStatic(IPAddress newIp, IPAddress newSm, IPAddress newGw, IPAddress newDns) {
+    config.useDhcp = false;
     config.ip = newIp;
     config.sm = newSm;
     config.gw = newGw;
@@ -1289,6 +1396,12 @@ void handleSwitchToStatic(IPAddress newIp, IPAddress newSm, IPAddress newGw, IPA
     WiFi.config(config.ip, config.gw, config.sm, config.dns);
 }
 
+/**
+ * @brief Handler callback to reconnect to WiFi from the console.
+ * This will attempt a reconnect, and if successful, will report the network
+ * info and attempt to resume normal operation. If reconnection fails, will
+ * fall back to the CLI and wait for user input.
+ */
 void handleReconnectFromConsole() {
     // Attempt to reconnect to WiFi.
     onCheckWifi();
@@ -1302,19 +1415,54 @@ void handleReconnectFromConsole() {
     }
 }
 
+/**
+ * @brief Handler callback for changing the WiFi username and/or password
+ * from the console. If one or both values are changing, then they will be
+ * stored in memory and a WiFi reconnect will be attempted.
+ * 
+ * @param newSsid The new SSID.
+ * @param newPassword The password.
+ */
 void handleWifiConfig(String newSsid, String newPassword) {
-    config.ssid = newSsid;
-    config.password = newPassword;
-    connectWifi();
+    if (config.ssid != newSsid || config.password != newPassword) {
+        config.ssid = newSsid;
+        config.password = newPassword;
+        connectWifi();
+    }
 }
 
+/**
+ * @brief Handler callback for saving the configuration from the console. This
+ * will persist the in-memory configuration to local storage, then reconnect
+ * WiFi.
+ */
 void handleSaveConfig() {
     saveConfiguration();
     WiFi.disconnect(true);
     onCheckWifi();
 }
 
+/**
+ * @brief Handler callback for updating the MQTT configuration from the
+ * console. If the configuration is actually changing, then this will
+ * unsubscribe from any subscribed topics and disconnect from the current
+ * broker, then apply the new config details in memory and reconnect to
+ * the new broker and subscribe to the new topics.
+ * 
+ * @param newBroker The new MQTT broker to connect to.
+ * @param newPort The new port to connect to the broker on.
+ * @param newUsername The new MQTT username to use.
+ * @param newPassw The new MQTT password to use.
+ * @param newConChan The control topic to subscribe to.
+ * @param newStatChan The new status topic to publish to.
+ */
 void handleMqttConfigCommand(String newBroker, int newPort, String newUsername, String newPassw, String newConChan, String newStatChan) {
+    if (config.mqttBroker == newBroker && config.mqttPort == newPort
+        && config.mqttUsername == newUsername && config.mqttPassword == newPassw
+        && config.mqttTopicControl == newConChan && config.mqttTopicStatus == newStatChan) {
+        return;
+    }
+
     mqttClient.unsubscribe(config.mqttTopicControl.c_str());
     mqttClient.disconnect();
 
@@ -1329,10 +1477,17 @@ void handleMqttConfigCommand(String newBroker, int newPort, String newUsername, 
     Serial.println();
 }
 
+/**
+ * @brief TODO
+ * 
+ */
 void handleRunTestSequence() {
-
+    // TODO Code to test every string on every module (step sequence);
 }
 
+/**
+ * @brief Initializes the CLI.
+ */
 void initConsole() {
     Serial.print(F("INIT: Initializing console... "));
 
@@ -1366,7 +1521,7 @@ void initConsole() {
 }
 
 /**
- * Initializes the task manager and all recurring tasks.
+ * @brief Initializes the task manager and all recurring tasks.
  */
 void initTaskManager() {
     Serial.print(F("INIT: Initializing task scheduler... "));
@@ -1383,7 +1538,8 @@ void initTaskManager() {
 }
 
 /**
- * Initializes the crash monitor and dump any previous crash data to the serial console.
+ * @brief Initializes the crash monitor and dump any previous crash data to the
+ * serial console.
  */
 void initCrashMonitor() {
     Serial.print(F("INIT: Initializing crash monitor... "));
@@ -1393,6 +1549,9 @@ void initCrashMonitor() {
     delay(100);
 }
 
+/**
+ * @brief Operations loop. Runs all the subsystems.
+ */
 void operationsLoop() {
     ESPCrashMonitor.iAmAlive();
     Console.checkInterrupt();
@@ -1406,13 +1565,15 @@ void operationsLoop() {
     mqttClient.loop();
 }
 
+/**
+ * @brief Setup routine. This represents the boot sequence, which executes
+ * ONCE at startup to initialize all the subsystems.
+ */
 void setup() {
     initSerial();
     initCrashMonitor();
     initOutputs();
-    #ifndef MODEL_1
     initComBus();
-    #endif
     initRelayModules();
     initFilesystem();
     initWiFi();
@@ -1426,6 +1587,9 @@ void setup() {
     ESPCrashMonitor.enableWatchdog(ESPCrashMonitorClass::ETimeout::Timeout_2s);
 }
 
+/**
+ * @brief Main program loop. Never returns. Executes all operations.
+ */
 void loop() {
     operationsLoop();
     if (!terminateSequence) {
