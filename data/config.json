@@ -1,18 +1,18 @@
 {
 	"hostname": "CLCONTROLLER",
 	"useDhcp": false,
-	"ip": "192.168.0.215",
+	"ip": "192.168.0.217",
 	"gateway": "192.168.0.1",
 	"subnetmask": "255.255.255.0",
 	"dnsServer": "192.168.0.1",
-	"wifiSSID": "your_ssid_here",
-	"wifiPassword": "your_password_here",
-	"mqttBroker": "your_mqtt_broker_here",
+	"wifiSSID": "cyrusbuilt",
+	"wifiPassword": "haylie1125",
+	"mqttBroker": "192.168.0.104",
 	"mqttPort": 8883,
 	"mqttControlChannel": "clcontroller/control",
 	"mqttStatusChannel": "clcontroller/status",
-	"mqttUsername": "your_mqtt_username",
-	"mqttPassword": "your_mqtt_password",
+	"mqttUsername": "cygarage",
+	"mqttPassword": "gonchar",
 	"otaPort": 8266,
-	"otaPassword": "your_ota_password"
+	"otaPassword": "p165flash1T"
 }

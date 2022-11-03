@@ -54,7 +54,7 @@ public:
     /**
      * @brief A letter representing the note.
      */
-    char note;
+    String note;
 
     /**
      * @brief The note period.
@@ -112,7 +112,7 @@ public:
      * @brief The "melody" represented by a vector of chars, which defines
      * the order in which "notes" should be "played".
      */
-    vector<char> melody;
+    vector<String> melody;
 };
 
 /**

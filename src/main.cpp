@@ -559,7 +559,7 @@ void loadSequenceSheet() {
     
     config.sheetName = doc["name"].as<String>();
     Playsheet.sheetName = config.sheetName.c_str();
-    Playsheet.tempo = doc["temp"].as<int>();
+    Playsheet.tempo = doc["tempo"].as<int>();
     Playsheet.pause = doc["pause"].as<int>();
     Playsheet.beat = doc["beat"].as<int>();
     Playsheet.restCount = doc["restCount"].as<int>();
@@ -567,7 +567,7 @@ void loadSequenceSheet() {
     JsonArray notes = doc["notes"].as<JsonArray>();
     for (auto currentNote : notes) {
         Note note;
-        note.note = currentNote["note"].as<char>();
+        note.note = currentNote["note"].as<String>();
         note.period = currentNote["period"].as<int>();
 
         JsonArray lights = currentNote["lights"].as<JsonArray>();
@@ -583,7 +583,7 @@ void loadSequenceSheet() {
 
     JsonArray sequence = doc["melody"].as<JsonArray>();
     for (auto seq : sequence) {
-        Playsheet.melody.push_back(seq.as<char>());
+        Playsheet.melody.push_back(seq.as<String>());
     }
 
     doc.clear();
@@ -602,11 +602,11 @@ void loadSequenceSheet() {
  * @param note The character representing the note to find.
  * @return Note A pointer to the matching note if found; Otherwise, NULL.
  */
-Note* findNote(char note) {
+Note* findNote(String note) {
     size_t index = 0;
     Note* match = NULL;
     for (auto currentNote = Playsheet.notes.begin(); currentNote != Playsheet.notes.end(); currentNote++) {
-        if (currentNote->note == note) {
+        if (note.equals(currentNote->note)) {
             match = &Playsheet.notes.at(index);
             break;
         }
@@ -626,33 +626,68 @@ Note* findNote(char note) {
  */
 void playNote(Note* note, const int duration) {
     if (note == NULL) {
+        #ifdef DEBUG
+            Serial.println(F("DEBUG: Null note"));
+        #endif
         return;
     }
 
+    #ifdef DEBUG
+        Serial.print(F("DEBUG: Playing note '"));
+        Serial.print(note->note);
+        Serial.println(F("'"));
+        Serial.print(F("DEBUG: Note period: "));
+        Serial.println(note->period);
+        for (auto ls : note->lights) {
+            Serial.print(F("DEBUG: Module ID: "));
+            Serial.print(ls.modIdx);
+            Serial.print(F(". Light string ID: "));
+            Serial.println((uint8_t)ls.lsIdx);
+        }
+    #endif
+
     long elapsedTime = 0;
     if (note->period > 0) {
-        while (elapsedTime < duration) {
-            // TODO Should we opLoop and term check in here?
-            for (LightString lightString : note->lights) {
-                relayModules.at(lightString.modIdx).open(lightString.lsIdx);
-            }
+        // while (elapsedTime < duration) {
+        //     // TODO Should we opLoop and term check in here?
+        //     for (LightString lightString : note->lights) {
+        //         relayModules.at(lightString.modIdx).open(lightString.lsIdx);
+        //     }
 
-            delayMicroseconds(note->period / 2);
+        //     delayMicroseconds(note->period / 2);
 
-            for (LightString lightString : note->lights) {
-                relayModules.at(lightString.modIdx).close(lightString.lsIdx);
-            }
+        //     for (LightString lightString : note->lights) {
+        //         relayModules.at(lightString.modIdx).close(lightString.lsIdx);
+        //     }
 
-            delayMicroseconds(note->period / 2);
-            elapsedTime += note->period;
+        //     delayMicroseconds(note->period / 2);
+        //     elapsedTime += note->period;
+        // }
+        for (LightString lightString : note->lights) {
+            relayModules.at(lightString.modIdx).open(lightString.lsIdx);
+        }
+
+        delayMicroseconds(note->period * 400);
+
+        for (LightString lightString : note->lights) {
+            relayModules.at(lightString.modIdx).close(lightString.lsIdx);
         }
     }
     else {
-        for (int j = 0; j < Playsheet.restCount; j++) {
-            // TODO Wait a minute... can't I just do duration * restCount and nix the loop?!?!
-            // TODO Or... should we opLoop and term check in here before every delay?
-            delayMicroseconds(duration);
-        }
+        // for (int j = 0; j < Playsheet.restCount; j++) {
+        //     // TODO Wait a minute... can't I just do duration * restCount and nix the loop?!?!
+        //     // TODO Or... should we opLoop and term check in here before every delay?
+        //     #ifdef DEBUG
+        //         Serial.println(F("DEBUG: OpLoop"));
+        //     #endif
+        //     operationsLoop();
+        //     if (terminateSequence) {
+        //         break;
+        //     }
+
+        //     delayMicroseconds(duration);
+        // }
+        delayMicroseconds(duration);
     }
 }
 
@@ -693,7 +728,7 @@ void playSequenceSheet() {
     Serial.println(duration);
     #endif
 
-    for (char melodyNote : Playsheet.melody) {
+    for (String melodyNote : Playsheet.melody) {
         // This will introduce slight delays during sequences, but it beats blocking
         // other operations from processing and keeps the watchdog fed.
         // The ESP-32 would probably be better suited for this since we can run a
