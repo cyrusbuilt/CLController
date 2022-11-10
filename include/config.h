@@ -6,6 +6,7 @@
 //#define MODEL_1                                     // The Model 1 controller used 5 PowerRelay FeatherWing modules instead of RelayModule over I2C.
 #define DEBUG                                       // Enable additional debug output.
 #define DEVICE_NAME "CLCONTROLLER"                  // The device name (hostname).
+#define DEVICE_CLASS "clcontroller"                 // The device class (used for discovery).
 #define BAUD_RATE 115200                            // The BAUD rate (speed) of the serial port (console).
 #define ENABLE_OTA                                  // Comment to disable OTA (over-the-air) firmware updates.
 #define ENABLE_MDNS                                 // Comment to disable MDNS (multicast-DNS) support.
@@ -19,6 +20,7 @@
 #define CHECK_MQTT_INTERVAL 35000                   // MQTT connectivity check interval (millis).
 #define MQTT_TOPIC_STATUS "clcontroller/status"     // MQTT status channel to publish to.
 #define MQTT_TOPIC_CONTROL "clcontroller/control"   // MQTT control channel to subscribe to.
+#define MQTT_TOPIC_DISCOVERY "redqueen/config"      // MQTT discovery topic to publish to.
 #define MQTT_BROKER "your_mqtt_broker_ip"           // MQTT broker hostname or IP.
 #define MQTT_PORT 8883                              // MQTT port number.
 #ifdef ENABLE_OTA
@@ -48,6 +50,7 @@ typedef struct {
     // MQTT stuff
     String mqttTopicStatus;
     String mqttTopicControl;
+    String mqttTopicDiscovery;
     String mqttBroker;
     String mqttUsername;
     String mqttPassword;
